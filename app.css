@@ -1983,3 +1983,34 @@ button.workflow-stat:hover {
   padding-inline: 12px;
   flex: 1;
 }
+.policy-reviews {
+  display: grid;
+  gap: 16px;
+  margin-block: 20px;
+}
+.policy-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-block: 10px;
+  background: #fff;
+}
+.policy-option input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-top: 3px;
+}
+.policy-option > span {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+.policy-preferences {
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+}

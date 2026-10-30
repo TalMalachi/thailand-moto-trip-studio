@@ -9574,11 +9574,80 @@ var require_leaflet_src = __commonJS({
   }
 });
 
+// src/booking-policy-review.js
+var esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function validateProposals(input) {
+  if (!Array.isArray(input) || input.length > 500) throw Error("\u05E8\u05E9\u05D9\u05DE\u05EA \u05D4\u05E6\u05E2\u05D5\u05EA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05E0\u05D4");
+  const ids = /* @__PURE__ */ new Set();
+  return input.map((p) => {
+    if (!p || typeof p.id !== "string" || !p.id || p.id.length > 100 || ids.has(p.id) || typeof p.category !== "string" || !p.category.trim() || p.category.length > 100) throw Error("\u05D4\u05E6\u05E2\u05EA \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05E0\u05D4");
+    ids.add(p.id);
+    if (!["policy_updated", "awaiting_approval", "approved", "rejected"].includes(p.state)) throw Error("\u05DE\u05E6\u05D1 \u05D4\u05E6\u05E2\u05D4 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF");
+    if (!Array.isArray(p.options) || p.options.length > 100 || !Array.isArray(p.bookingIds ?? [])) throw Error("\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05D4\u05D4\u05E6\u05E2\u05D4 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05E0\u05D5\u05EA");
+    const optionIds = /* @__PURE__ */ new Set();
+    const options = p.options.map((o) => {
+      if (!o || typeof o.id !== "string" || !o.id || o.id.length > 100 || optionIds.has(o.id) || typeof o.label !== "string" || !o.label.trim() || o.label.length > 500) throw Error("\u05D0\u05E4\u05E9\u05E8\u05D5\u05EA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05E0\u05D4");
+      optionIds.add(o.id);
+      const v = { id: o.id, label: o.label, details: String(o.details ?? ""), recommended: o.recommended === true };
+      if (v.details.length > 1e4) throw Error("\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D0\u05E8\u05D5\u05DA \u05DE\u05D3\u05D9");
+      if (o.sourceUrl) {
+        const u = new URL(o.sourceUrl);
+        if (!["http:", "https:"].includes(u.protocol)) throw Error("\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF");
+        v.sourceUrl = u.href;
+      }
+      if (o.estimatedCost !== void 0) {
+        if (typeof o.estimatedCost !== "number" || !Number.isFinite(o.estimatedCost) || o.estimatedCost < 0) throw Error("\u05E2\u05DC\u05D5\u05EA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05E0\u05D4");
+        v.estimatedCost = o.estimatedCost;
+        v.costBasis = o.costBasis || "booking";
+        if (!["booking", "night", "day", "person"].includes(v.costBasis)) throw Error("\u05D1\u05E1\u05D9\u05E1 \u05E2\u05DC\u05D5\u05EA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF");
+      }
+      return v;
+    });
+    const selected = p.approvedOptionIds ?? [];
+    if (!Array.isArray(selected) || new Set(selected).size !== selected.length || selected.some((id) => !optionIds.has(id))) throw Error("\u05D1\u05D7\u05D9\u05E8\u05D5\u05EA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05E0\u05D5\u05EA");
+    if (p.budgetSharePct !== void 0 && p.budgetSharePct !== null && (typeof p.budgetSharePct !== "number" || !Number.isFinite(p.budgetSharePct) || p.budgetSharePct < 0 || p.budgetSharePct > 100)) throw Error("\u05D0\u05D7\u05D5\u05D6 \u05EA\u05E7\u05E6\u05D9\u05D1 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF");
+    const out = { id: p.id, category: p.category.trim(), state: p.state, options, bookingIds: (p.bookingIds ?? []).map((id) => {
+      if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) throw Error("\u05DE\u05D6\u05D4\u05D4 \u05D4\u05D6\u05DE\u05E0\u05D4 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF");
+      return id;
+    }), budgetSharePct: p.budgetSharePct ?? null, approvedOptionIds: selected };
+    for (const key of ["createdAt", "reviewedAt"]) if (p[key] !== void 0) {
+      if (typeof p[key] !== "string" || !Number.isFinite(Date.parse(p[key]))) throw Error("\u05EA\u05D0\u05E8\u05D9\u05DA \u05D4\u05E6\u05E2\u05D4 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF");
+      out[key] = p[key];
+    }
+    return out;
+  });
+}
+function latestProposal(settings2, category) {
+  return [...settings2.bookingPolicyProposals || []].reverse().find((p) => p.category === category) || null;
+}
+function categoryBudget(settings2, proposal) {
+  const total = Number(settings2.budget);
+  return total > 0 && proposal?.budgetSharePct !== null && proposal?.budgetSharePct !== void 0 ? Math.round(total * proposal.budgetSharePct) / 100 : null;
+}
+var safeSource = (url) => {
+  try {
+    const u = new URL(url);
+    return ["https:", "http:"].includes(u.protocol) ? u.href : "";
+  } catch {
+    return "";
+  }
+};
+var money = (v) => new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(v);
+function reviewMarkup(items, settings2, selected) {
+  const categories2 = [.../* @__PURE__ */ new Set([...items.filter((x) => x.kind === "booking").map((x) => x.payload.type?.trim() || "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"), ...(settings2.bookingPolicyProposals || []).map((p) => p.category)])].filter((c) => selected === null || c === selected);
+  return '<div class="policy-review-intro"><h3>\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05E9\u05D4\u05E1\u05D5\u05DB\u05DF \u05DE\u05E6\u05D0 \u2014 \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8\u05DA</h3><p>\u05D4\u05E1\u05D5\u05DB\u05DF \u05D9\u05E6\u05D9\u05D2 \u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05D5\u05D9\u05DE\u05DC\u05D9\u05E5 \u05E2\u05DC \u05D1\u05D7\u05D9\u05E8\u05D5\u05EA. \u05E2\u05D1\u05D5\u05E8 \u05E2\u05DC\u05D9\u05D4\u05DF \u05D5\u05E1\u05DE\u05DF \u05D0\u05EA \u05D4\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05D4\u05DE\u05E7\u05D5\u05D1\u05DC\u05D5\u05EA \u05E2\u05DC\u05D9\u05DA. \u05D0\u05D9\u05E9\u05D5\u05E8 \u05DB\u05D0\u05DF \u05DE\u05D0\u05E9\u05E8 \u05D0\u05EA \u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05D4\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D1\u05DC\u05D1\u05D3.</p><p><strong>\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D4\u05D8\u05D9\u05D5\u05DC: ' + (settings2.budget > 0 ? money(settings2.budget) : "\u05D8\u05E8\u05DD \u05D4\u05D5\u05D2\u05D3\u05E8 \u2014 \u05D9\u05E9 \u05DC\u05E2\u05D3\u05DB\u05DF \u05D1\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC") + '</strong></p></div><div class="policy-reviews">' + categories2.map((category) => {
+    const p = latestProposal(settings2, category);
+    if (!p) return '<article class="card"><h3>' + esc(category) + '</h3><p class="muted">\u05D8\u05E8\u05DD \u05D4\u05EA\u05E7\u05D1\u05DC\u05D5 \u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05DE\u05D4\u05E1\u05D5\u05DB\u05DF \u05E2\u05D1\u05D5\u05E8 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D6\u05D5.</p></article>';
+    const pending = ["policy_updated", "awaiting_approval"].includes(p.state), budget = categoryBudget(settings2, p);
+    return '<article class="card"><span class="badge">' + { policy_updated: "\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D4\u05D6\u05DE\u05E0\u05D4 \u05E2\u05D5\u05D3\u05DB\u05E0\u05D4", awaiting_approval: "\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8\u05DA", approved: "\u05D4\u05D1\u05D7\u05D9\u05E8\u05D5\u05EA \u05D0\u05D5\u05E9\u05E8\u05D5", rejected: "\u05D4\u05D4\u05E6\u05E2\u05D4 \u05E0\u05D3\u05D7\u05EA\u05D4" }[p.state] + "</span><h3>" + esc(category) + "</h3><p>" + (p.budgetSharePct !== null && p.budgetSharePct !== void 0 ? (pending ? "\u05D4\u05E7\u05E6\u05D0\u05D4 \u05DE\u05D5\u05E6\u05E2\u05EA: " : "\u05D4\u05E7\u05E6\u05D0\u05EA \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4: ") + esc(p.budgetSharePct) + "% \u05DE\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D4\u05D8\u05D9\u05D5\u05DC" + (budget !== null ? " \u2014 " + money(budget) : " \u2014 \u05D4\u05E1\u05DB\u05D5\u05DD \u05D9\u05D7\u05D5\u05E9\u05D1 \u05DC\u05D0\u05D7\u05E8 \u05D4\u05D2\u05D3\u05E8\u05EA \u05D4\u05EA\u05E7\u05E6\u05D9\u05D1") : "\u05D7\u05DC\u05D5\u05E7\u05EA \u05D4\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DC\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D8\u05E8\u05DD \u05D4\u05D5\u05E6\u05E2\u05D4") + '</p><form data-policy-review="' + esc(p.id) + '">' + p.options.map((o) => '<label class="policy-option"><input type="checkbox" name="option" value="' + esc(o.id) + '" ' + ((pending ? o.recommended : (p.approvedOptionIds || []).includes(o.id)) ? "checked " : "") + (pending ? "" : "disabled") + "><span><strong>" + esc(o.label) + "</strong>" + (o.recommended ? '<span class="badge">\u05D4\u05E1\u05D5\u05DB\u05DF \u05DE\u05DE\u05DC\u05D9\u05E5</span>' : "") + "<span>" + esc(o.details) + "</span>" + (o.estimatedCost !== void 0 ? "<span>\u05E2\u05DC\u05D5\u05EA \u05DE\u05E9\u05D5\u05E2\u05E8\u05EA: " + money(o.estimatedCost) + " " + { booking: "\u05DC\u05D4\u05D6\u05DE\u05E0\u05D4", night: "\u05DC\u05DC\u05D9\u05DC\u05D4", day: "\u05DC\u05D9\u05D5\u05DD", person: "\u05DC\u05D0\u05D3\u05DD" }[o.costBasis || "booking"] + "</span>" : "") + (safeSource(o.sourceUrl) ? '<a href="' + esc(safeSource(o.sourceUrl)) + '" target="_blank" rel="noopener noreferrer">\u05D1\u05D3\u05D9\u05E7\u05EA \u05D4\u05DE\u05E7\u05D5\u05E8</a>' : "") + "</span></label>").join("") + (pending && p.options.length ? '<div class="row"><button type="submit">\u05D0\u05E9\u05E8 \u05D0\u05EA \u05D4\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05E9\u05E1\u05D9\u05DE\u05E0\u05EA\u05D9</button><button type="button" data-reject-policy="' + esc(p.id) + '" class="danger">\u05D3\u05D7\u05D4 \u05D4\u05E6\u05E2\u05D4</button></div>' : "") + '<p data-policy-feedback role="status" aria-live="polite"></p></form></article>';
+  }).join("") + "</div>";
+}
+
 // src/booking-policies.js
 var choices = { budgetBasis: [["booking", "\u05DC\u05DB\u05DC \u05D4\u05D4\u05D6\u05DE\u05E0\u05D4"], ["night", "\u05DC\u05DC\u05D9\u05DC\u05D4"], ["day", "\u05DC\u05D9\u05D5\u05DD"], ["person", "\u05DC\u05D0\u05D3\u05DD"]], cancellation: [["", "\u05DC\u05D0 \u05D4\u05D5\u05D2\u05D3\u05E8"], ["free_required", "\u05D1\u05D9\u05D8\u05D5\u05DC \u05DC\u05DC\u05D0 \u05E2\u05DC\u05D5\u05EA \u2014 \u05D7\u05D5\u05D1\u05D4"], ["flexible_required", "\u05D0\u05E4\u05E9\u05E8\u05D5\u05EA \u05D1\u05D9\u05D8\u05D5\u05DC \u05D2\u05DE\u05D9\u05E9\u05D4 \u2014 \u05D7\u05D5\u05D1\u05D4"], ["flexible_preferred", "\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA \u05DC\u05D1\u05D9\u05D8\u05D5\u05DC \u05D2\u05DE\u05D9\u05E9"]], roomType: [["", "\u05DC\u05D0 \u05D4\u05D5\u05D2\u05D3\u05E8"], ["single", "\u05D7\u05D3\u05E8 \u05DC\u05D9\u05D7\u05D9\u05D3"], ["double", "\u05D7\u05D3\u05E8 \u05D6\u05D5\u05D2\u05D9"], ["suite", "\u05E1\u05D5\u05D5\u05D9\u05D8\u05D4"]], breakfast: [["", "\u05DC\u05D0 \u05D4\u05D5\u05D2\u05D3\u05E8"], ["required", "\u05D7\u05D5\u05D1\u05D4 \u05DC\u05DB\u05DC\u05D5\u05DC"], ["preferred", "\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA \u05DC\u05DB\u05DC\u05D5\u05DC"], ["not_needed", "\u05D0\u05D9\u05DF \u05E6\u05D5\u05E8\u05DA"]], loweredBike: [["", "\u05DC\u05D0 \u05D4\u05D5\u05D2\u05D3\u05E8"], ["required", "\u05D0\u05D5\u05E4\u05E0\u05D5\u05E2 \u05DE\u05D5\u05E0\u05DE\u05DA \u2014 \u05D7\u05D5\u05D1\u05D4"], ["preferred", "\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA \u05DC\u05D0\u05D5\u05E4\u05E0\u05D5\u05E2 \u05DE\u05D5\u05E0\u05DE\u05DA"]], pickup: [["", "\u05DC\u05D0 \u05D4\u05D5\u05D2\u05D3\u05E8"], ["required", "\u05D0\u05D9\u05E1\u05D5\u05E3 \u05DE\u05D4\u05DE\u05DC\u05D5\u05DF \u2014 \u05D7\u05D5\u05D1\u05D4"], ["preferred", "\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA \u05DC\u05D0\u05D9\u05E1\u05D5\u05E3"]] };
 var policyDefaults = { maxBudget: null, budgetBasis: "booking", cancellation: "", dateRules: "", roomType: "", guests: null, breakfast: "", loweredBike: "", bikeModel: "", maxSeatHeightCm: null, baggageKg: null, maxConnections: null, pickup: "", requiredNotes: "", preferredNotes: "", freeText: "" };
 function policyFields(category) {
-  const f = [["maxBudget", "\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DE\u05E8\u05D1\u05D9 \u05D1\u05E9\u05F4\u05D7", "number"], ["budgetBasis", "\u05D4\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DE\u05EA\u05D9\u05D9\u05D7\u05E1 \u05DC\u05BE", "select"], ["cancellation", "\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D1\u05D9\u05D8\u05D5\u05DC", "select"], ["dateRules", "\u05DE\u05D2\u05D1\u05DC\u05D5\u05EA \u05EA\u05D0\u05E8\u05D9\u05DB\u05D9\u05DD, \u05D9\u05DE\u05D9 \u05E9\u05D1\u05D5\u05E2 \u05D5\u05D7\u05D2\u05D9\u05DD", "textarea"]];
+  const f = [["cancellation", "\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D1\u05D9\u05D8\u05D5\u05DC", "select"], ["dateRules", "\u05DE\u05D2\u05D1\u05DC\u05D5\u05EA \u05EA\u05D0\u05E8\u05D9\u05DB\u05D9\u05DD, \u05D9\u05DE\u05D9 \u05E9\u05D1\u05D5\u05E2 \u05D5\u05D7\u05D2\u05D9\u05DD", "textarea"]];
   if (/מלון|לינה/.test(category)) f.push(["roomType", "\u05E1\u05D5\u05D2 \u05D4\u05D7\u05D3\u05E8", "select"], ["guests", "\u05DE\u05E1\u05E4\u05E8 \u05D0\u05D5\u05E8\u05D7\u05D9\u05DD", "number"], ["breakfast", "\u05D0\u05E8\u05D5\u05D7\u05EA \u05D1\u05D5\u05E7\u05E8", "select"]);
   if (/אופנוע|רכב/.test(category)) f.push(["loweredBike", "\u05D0\u05D5\u05E4\u05E0\u05D5\u05E2 \u05DE\u05D5\u05E0\u05DE\u05DA", "select"], ["bikeModel", "\u05D3\u05D2\u05DD \u05DE\u05D1\u05D5\u05E7\u05E9 / \u05D7\u05DC\u05D5\u05E4\u05D5\u05EA \u05DE\u05D5\u05EA\u05E8\u05D5\u05EA", "text"], ["maxSeatHeightCm", "\u05D2\u05D5\u05D1\u05D4 \u05DE\u05D5\u05E9\u05D1 \u05DE\u05E8\u05D1\u05D9 \u05D1\u05E1\u05F4\u05DE", "number"]);
   if (/טיס/.test(category)) f.push(["baggageKg", "\u05DB\u05D1\u05D5\u05D3\u05D4 \u05E0\u05D3\u05E8\u05E9\u05EA \u05D1\u05E7\u05F4\u05D2", "number"], ["maxConnections", "\u05DE\u05E1\u05E4\u05E8 \u05E7\u05D5\u05E0\u05E7\u05E9\u05E0\u05D9\u05DD \u05DE\u05E8\u05D1\u05D9", "number"]);
@@ -9618,27 +9687,27 @@ function validatePolicies(policies) {
     return v;
   });
 }
-var esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-function policiesMarkup(items, policies, selected) {
+var esc2 = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function policiesMarkup(items, policies, selected, settings2 = { budget: 0 }) {
   const names = [.../* @__PURE__ */ new Set([...items.filter((x) => x.kind === "booking").map((x) => x.payload.type?.trim() || "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"), ...policies.map((p) => p.category)])].sort((a, b) => a.localeCompare(b, "he"));
   const visible = selected === null ? names : names.filter((n) => n === selected);
-  return '<div class="policy-intro"><h3>\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D4\u05D4\u05D6\u05DE\u05E0\u05D4 \u05E9\u05DC\u05DA</h3><p>\u05EA\u05E0\u05D0\u05D9\u05DD \u05DC\u05E4\u05D9 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D5\u05DC\u05E4\u05D9 \u05D4\u05D9\u05E2\u05D3 \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9. \u05D3\u05E8\u05D9\u05E9\u05D5\u05EA \u05D7\u05D5\u05D1\u05D4 \u05DE\u05E1\u05E0\u05E0\u05D5\u05EA \u05D4\u05E6\u05E2\u05D5\u05EA; \u05D4\u05E2\u05D3\u05E4\u05D5\u05EA \u05E2\u05D5\u05D6\u05E8\u05D5\u05EA \u05DC\u05D4\u05E9\u05D5\u05D5\u05EA \u05D1\u05D9\u05E0\u05D9\u05D4\u05DF. \u05D4\u05E1\u05D5\u05DB\u05DF \u05D9\u05D7\u05D5\u05D1\u05E8 \u05D1\u05D4\u05DE\u05E9\u05DA.</p></div><div class="cards policy-cards">' + visible.map((category) => {
+  return reviewMarkup(items, settings2, selected) + '<details class="policy-preferences"><summary>\u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05D5\u05D4\u05E2\u05D3\u05E4\u05D5\u05EA \u05E8\u05D0\u05E9\u05D5\u05E0\u05D9\u05D5\u05EA \u05DC\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA</summary><div class="cards policy-cards">' + visible.map((category) => {
     const p = policies.find((x) => x.category === category);
     const details = p ? policyFields(category).filter((f) => p[f.key] !== null && p[f.key] !== "" && f.key !== "budgetBasis").map((f) => {
       let value = f.options?.find(([id]) => id === p[f.key])?.[1] ?? p[f.key];
       if (f.key === "maxBudget") value = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS" }).format(value) + " " + choices.budgetBasis.find(([id]) => id === p.budgetBasis)?.[1];
-      return "<div><dt>" + f.label + "</dt><dd>" + esc(value) + "</dd></div>";
+      return "<div><dt>" + f.label + "</dt><dd>" + esc2(value) + "</dd></div>";
     }).join("") : "";
-    return '<article class="card policy-card"><span class="badge">' + (p ? "\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05E9\u05DE\u05D5\u05E8\u05D4" : "\u05D8\u05E8\u05DD \u05D4\u05D5\u05D2\u05D3\u05E8\u05D4 \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA") + "</span><h3>" + esc(category) + "</h3>" + (details ? '<dl class="record-meta">' + details + "</dl>" : '<p class="muted">\u05D4\u05D2\u05D3\u05E8 \u05EA\u05E7\u05E6\u05D9\u05D1, \u05D3\u05E8\u05D9\u05E9\u05D5\u05EA \u05D5\u05D4\u05E2\u05D3\u05E4\u05D5\u05EA \u05DC\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D1\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D6\u05D5.</p>') + '<button type="button" data-policy-category="' + esc(category) + '">' + (p ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA" : "\u05D4\u05D2\u05D3\u05E8 \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA") + "</button></article>";
-  }).join("") + "</div>" + (visible.length ? "" : "<p>\u05DC\u05D7\u05E5 \u05E2\u05DC \u05F4\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D7\u05D3\u05E9\u05D4\u05F4 \u05DB\u05D3\u05D9 \u05DC\u05D4\u05D2\u05D3\u05D9\u05E8 \u05EA\u05E0\u05D0\u05D9\u05DD \u05DC\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D4\u05E8\u05D0\u05E9\u05D5\u05E0\u05D4.</p>");
+    return '<article class="card policy-card"><span class="badge">' + (p ? "\u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05E8\u05D0\u05E9\u05D5\u05E0\u05D9\u05D5\u05EA" : "\u05DC\u05DC\u05D0 \u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05E8\u05D0\u05E9\u05D5\u05E0\u05D9\u05D5\u05EA") + "</span><h3>" + esc2(category) + "</h3>" + (details ? '<dl class="record-meta">' + details + "</dl>" : '<p class="muted">\u05D0\u05E4\u05E9\u05E8 \u05DC\u05D4\u05D5\u05E1\u05D9\u05E3 \u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05E8\u05D0\u05E9\u05D5\u05E0\u05D9\u05D5\u05EA \u05E9\u05D9\u05E2\u05D6\u05E8\u05D5 \u05DC\u05E1\u05D5\u05DB\u05DF \u05DC\u05DE\u05E6\u05D5\u05D0 \u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA.</p>') + '<button type="button" data-policy-category="' + esc2(category) + '">' + (p ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05D4\u05E0\u05D7\u05D9\u05D5\u05EA" : "\u05D4\u05D5\u05E1\u05E3 \u05D4\u05E0\u05D7\u05D9\u05D5\u05EA") + "</button></article>";
+  }).join("") + "</div>" + (visible.length ? "" : "<p>\u05DC\u05D7\u05E5 \u05E2\u05DC \u05F4\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D7\u05D3\u05E9\u05D4\u05F4 \u05DB\u05D3\u05D9 \u05DC\u05D4\u05D2\u05D3\u05D9\u05E8 \u05EA\u05E0\u05D0\u05D9\u05DD \u05DC\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D4\u05E8\u05D0\u05E9\u05D5\u05E0\u05D4.</p>") + "</details>";
 }
 function policyFormMarkup(category, policy) {
   const p = { ...policyDefaults, ...policy };
-  return policyFields(category).map((f) => "<label>" + f.label + (f.type === "select" ? '<select name="' + f.key + '">' + f.options.map(([id, label]) => '<option value="' + id + '" ' + (p[f.key] === id ? "selected" : "") + ">" + label + "</option>").join("") + "</select>" : f.type === "textarea" ? '<textarea name="' + f.key + '">' + esc(p[f.key]) + "</textarea>" : '<input name="' + f.key + '" type="' + f.type + '" value="' + esc(p[f.key]) + '" ' + (f.type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>").join("");
+  return policyFields(category).map((f) => "<label>" + f.label + (f.type === "select" ? '<select name="' + f.key + '">' + f.options.map(([id, label]) => '<option value="' + id + '" ' + (p[f.key] === id ? "selected" : "") + ">" + label + "</option>").join("") + "</select>" : f.type === "textarea" ? '<textarea name="' + f.key + '">' + esc2(p[f.key]) + "</textarea>" : '<input name="' + f.key + '" type="' + f.type + '" value="' + esc2(p[f.key]) + '" ' + (f.type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>").join("");
 }
 
 // src/workflow.js
-var workflowStatuses = [["opened", "\u05E0\u05E4\u05EA\u05D7"], ["read_by_agent", "\u05E0\u05E7\u05E8\u05D0 \u05E2\u05F4\u05D9 \u05D4\u05E1\u05D5\u05DB\u05DF"], ["email_sent", "\u05E0\u05E9\u05DC\u05D7 \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC"], ["awaiting_approval", "\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8\u05DA"], ["awaiting_details", "\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D8\u05D9\u05DD"], ["updated", "\u05DE\u05E2\u05D5\u05D3\u05DB\u05DF"], ["rejected", "\u05E0\u05D3\u05D7\u05D4"], ["completed", "\u05E1\u05D9\u05D9\u05DD \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4"]];
+var workflowStatuses = [["opened", "\u05E0\u05E4\u05EA\u05D7"], ["read_by_agent", "\u05E0\u05E7\u05E8\u05D0 \u05E2\u05F4\u05D9 \u05D4\u05E1\u05D5\u05DB\u05DF"], ["email_sent", "\u05E0\u05E9\u05DC\u05D7 \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC"], ["policy_updated", "\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D4\u05D6\u05DE\u05E0\u05D4 \u05E2\u05D5\u05D3\u05DB\u05E0\u05D4"], ["awaiting_approval", "\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8\u05DA"], ["awaiting_details", "\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D8\u05D9\u05DD"], ["updated", "\u05DE\u05E2\u05D5\u05D3\u05DB\u05DF"], ["rejected", "\u05E0\u05D3\u05D7\u05D4"], ["completed", "\u05E1\u05D9\u05D9\u05DD \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4"]];
 function workflowStatus(item) {
   const p = item.payload;
   if (workflowStatuses.some(([id]) => id === p.workflowStatus)) return p.workflowStatus;
@@ -9662,10 +9731,10 @@ function workflowStatistics(items) {
   }
   return { total: items.length, counts, categories: [...categories2.values()].sort((a, b) => a.category.localeCompare(b.category, "he")) };
 }
-var esc2 = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+var esc3 = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 function statisticsMarkup(items) {
   const s = workflowStatistics(items);
-  const drill = (value, label, status2 = "", category) => '<button type="button" class="stat-drill" data-stat-drill data-drill-status="' + status2 + '"' + (category === void 0 ? "" : ' data-drill-category="' + esc2(category) + '"') + ' aria-label="' + esc2(label) + '">' + esc2(value) + "</button>";
+  const drill = (value, label, status2 = "", category) => '<button type="button" class="stat-drill" data-stat-drill data-drill-status="' + status2 + '"' + (category === void 0 ? "" : ' data-drill-category="' + esc3(category) + '"') + ' aria-label="' + esc3(label) + '">' + esc3(value) + "</button>";
   return '<div class="workflow-statistics"><p class="muted">' + drill(s.total + " \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9", "\u05D4\u05E6\u05D2 \u05D0\u05EA \u05DB\u05DC \u05D4\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9") + '</p><div class="workflow-status-grid">' + workflowStatuses.map(([id, label]) => '<button type="button" class="workflow-stat" data-status="' + id + '" data-stat-drill data-drill-status="' + id + '" aria-label="\u05D4\u05E6\u05D2 ' + s.counts[id] + " \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E1\u05D8\u05D8\u05D5\u05E1 " + label + '"><strong>' + s.counts[id] + "</strong><span>" + label + "</span></button>").join("") + '</div><h3>\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05D5\u05E1\u05D8\u05D8\u05D5\u05E1\u05D9\u05DD</h3><div class="workflow-table-scroll" tabindex="0" role="region" aria-label="\u05D8\u05D1\u05DC\u05EA \u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA \u05DC\u05E4\u05D9 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D5\u05E1\u05D8\u05D8\u05D5\u05E1"><table class="workflow-table"><caption>\u05DC\u05D7\u05E5 \u05E2\u05DC \u05DE\u05E1\u05E4\u05E8 \u05DB\u05D3\u05D9 \u05DC\u05D4\u05E6\u05D9\u05D2 \u05D0\u05EA \u05D4\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D4\u05DE\u05EA\u05D0\u05D9\u05DE\u05D9\u05DD</caption><thead><tr><th scope="col">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</th><th scope="col">\u05E1\u05D4\u05F4\u05DB</th>' + workflowStatuses.map(([, label]) => '<th scope="col">' + label + "</th>").join("") + "</tr></thead><tbody>" + s.categories.map((row) => '<tr><th scope="row">' + drill(row.category, "\u05D4\u05E6\u05D2 \u05D0\u05EA \u05DB\u05DC \u05D4\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 " + row.category, "", row.category) + "</th><td>" + drill(row.total, "\u05D4\u05E6\u05D2 \u05D0\u05EA \u05DB\u05DC \u05D4\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 " + row.category, "", row.category) + "</td>" + workflowStatuses.map(([id, label]) => "<td>" + drill(row.counts[id], "\u05D4\u05E6\u05D2 " + row.counts[id] + " \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD: " + row.category + ", " + label, id, row.category) + "</td>").join("") + "</tr>").join("") + "</tbody></table></div>" + (s.total ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05D4\u05E6\u05D2\u05EA \u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA.</p>") + "</div>";
 }
 
@@ -30603,7 +30672,7 @@ function validateSettings(s) {
   if (!s || typeof s !== "object" || Array.isArray(s)) throw Error("Invalid settings");
   const { start = "", days = 21, budget = 0, currency = "ILS" } = s;
   if (typeof start !== "string" || start && !/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isInteger(days) || days < 1 || days > 365 || typeof budget !== "number" || !Number.isFinite(budget) || budget < 0 || currency !== "ILS") throw Error("Invalid settings");
-  return { start, days, budget, currency, ...s.bookingPolicies !== void 0 ? { bookingPolicies: validatePolicies(s.bookingPolicies) } : {} };
+  return { start, days, budget, currency, ...s.bookingPolicies !== void 0 ? { bookingPolicies: validatePolicies(s.bookingPolicies) } : {}, ...s.bookingPolicyProposals !== void 0 ? { bookingPolicyProposals: validateProposals(s.bookingPolicyProposals) } : {} };
 }
 function parseBackup(text) {
   if (typeof text !== "string" || text.length > 5e6) throw Error("Backup too large");
@@ -30690,6 +30759,9 @@ function createRepository(client2) {
     },
     async deleteItem(id, version5) {
       return changed(await client2.rpc("delete_trip_item", { p_id: id, p_expected_version: version5 }));
+    },
+    async reviewPolicy(tripId, version5, proposalId, ids, decision) {
+      return changed(await client2.rpc("review_booking_policy", { p_trip_id: tripId, p_expected_version: version5, p_proposal_id: proposalId, p_selected_ids: ids, p_decision: decision }));
     },
     async updateSettings(id, version5, settings2) {
       return changed(await client2.rpc("update_trip_settings", { p_id: id, p_expected_version: version5, p_settings: validateSettings(settings2) }));
@@ -30952,7 +31024,7 @@ var client = createClient(cloudConfig.url, cloudConfig.publishableKey, { auth: {
 var auth = createAuth(client, new URL("./", window.location.href).href);
 var repo = createRepository(client);
 var $ = (s) => document.querySelector(s);
-var esc3 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+var esc4 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 var tabs = [["dashboard", "\u05E1\u05E7\u05D9\u05E8\u05D4"], ["booking", "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA"], ["stop", "\u05DE\u05E1\u05DC\u05D5\u05DC"], ["place", "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD"], ["gear", "\u05E6\u05D9\u05D5\u05D3 \u05D5\u05D4\u05D3\u05E8\u05DB\u05D5\u05EA"], ["task", "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA"], ["settings", "\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D5\u05D2\u05D9\u05D1\u05D5\u05D9"]];
 var fields = { booking: [["name", "\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4"], ["type", "\u05E1\u05D5\u05D2"], ["status", "\u05DE\u05E6\u05D1 \u05D4\u05D6\u05DE\u05E0\u05D4 / \u05EA\u05E9\u05DC\u05D5\u05DD"], ["workflowStatus", "\u05E1\u05D8\u05D8\u05D5\u05E1 \u05D8\u05D9\u05E4\u05D5\u05DC", "workflow"], ["supplier", "\u05E1\u05E4\u05E7"], ["cost", "\u05DE\u05D7\u05D9\u05E8 \u05DB\u05D5\u05DC\u05DC \u20AA", "number"], ["paid", "\u05E9\u05D5\u05DC\u05DD \u20AA", "number"], ["ref", "\u05DE\u05E1\u05E4\u05E8 \u05D0\u05D9\u05E9\u05D5\u05E8 / \u05D4\u05D6\u05DE\u05E0\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D6\u05DE\u05E0\u05D4", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], stop: [["day", "\u05D9\u05D5\u05DD \u05D1\u05D8\u05D9\u05D5\u05DC", "number"], ["place", "\u05DE\u05E7\u05D5\u05DD / \u05D9\u05E2\u05D3"], ["kind", "\u05E1\u05D5\u05D2 \u05E2\u05E6\u05D9\u05E8\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E0\u05D9\u05D5\u05D5\u05D8", "url"], ["notes", "\u05EA\u05DB\u05E0\u05D5\u05DF \u05D5\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"], ["lat", "\u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 (Latitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"], ["lng", "\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA (Longitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"]], place: [["name", "\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD"], ["type", "\u05E1\u05D5\u05D2"], ["area", "\u05D0\u05D6\u05D5\u05E8"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05E4\u05D5\u05EA / \u05D0\u05EA\u05E8", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA / \u05D8\u05DC\u05E4\u05D5\u05DF / \u05E9\u05E2\u05D5\u05EA", "textarea"]], gear: [["name", "\u05E4\u05E8\u05D9\u05D8"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E8\u05DB\u05D9\u05E9\u05D4", "url"], ["guide", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D3\u05E8\u05DB\u05EA \u05E9\u05D9\u05DE\u05D5\u05E9", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], task: [["title", "\u05DE\u05E9\u05D9\u05DE\u05D4"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["workflowStatus", "\u05E1\u05D8\u05D8\u05D5\u05E1 \u05D8\u05D9\u05E4\u05D5\u05DC", "workflow"]] };
 var session = null;
@@ -30967,6 +31039,7 @@ var viewEpoch = 0;
 var authVersion = 0;
 var selectedTripId = null;
 var destinations = [];
+var policyReviewDirty = false;
 var workViews = { booking: "stats", task: "stats" };
 var statusFilters = { booking: "", task: "" };
 mountHeaderPanel(document, window, () => Boolean(session && trip));
@@ -30975,10 +31048,10 @@ function status(text) {
   const feedback = $("#editor").querySelector("[data-dialog-status]");
   if (feedback) feedback.textContent = text;
 }
-var money = formatMoney;
+var money2 = formatMoney;
 function field(k, label, value = "", type = "text") {
-  if (type === "workflow") return "<label>" + esc3(label) + '<select name="' + k + '">' + workflowStatuses.map(([id, text]) => '<option value="' + id + '" ' + (id === value ? "selected" : "") + ">" + text + "</option>").join("") + "</select></label>";
-  return "<label>" + esc3(label) + (type === "textarea" ? '<textarea name="' + k + '">' + esc3(value) + "</textarea>" : '<input autocomplete="off" name="' + k + '" type="' + type + '" value="' + esc3(value) + '" ' + (["lat", "lng"].includes(k) ? 'inputmode="decimal" ' : "") + (type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>";
+  if (type === "workflow") return "<label>" + esc4(label) + '<select name="' + k + '">' + workflowStatuses.map(([id, text]) => '<option value="' + id + '" ' + (id === value ? "selected" : "") + ">" + text + "</option>").join("") + "</select></label>";
+  return "<label>" + esc4(label) + (type === "textarea" ? '<textarea name="' + k + '">' + esc4(value) + "</textarea>" : '<input autocomplete="off" name="' + k + '" type="' + type + '" value="' + esc4(value) + '" ' + (["lat", "lng"].includes(k) ? 'inputmode="decimal" ' : "") + (type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>";
 }
 function lock(value) {
   busy = value;
@@ -31074,7 +31147,7 @@ function passwordEditor() {
   $("#editor").showModal();
 }
 function account() {
-  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + "</span><div><strong>" + esc3(trip?.destination_name || "Motor Trip Studio") + '</strong><small dir="auto">' + esc3(session.user.email) + '</small></div></div><div class="account-tools"><button id="destinations-home">\u05D9\u05E2\u05D3\u05D9\u05DD</button><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
+  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + "</span><div><strong>" + esc4(trip?.destination_name || "Motor Trip Studio") + '</strong><small dir="auto">' + esc4(session.user.email) + '</small></div></div><div class="account-tools"><button id="destinations-home">\u05D9\u05E2\u05D3\u05D9\u05DD</button><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
   $("#destinations-home").onclick = () => {
     if (busy) return;
     $("#editor").close();
@@ -31087,6 +31160,8 @@ function account() {
     load().catch(showLoadError);
   };
   $("#refresh").onclick = () => {
+    if (policyReviewDirty && !confirm("\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05D1\u05D7\u05D9\u05E8\u05D5\u05EA \u05E9\u05D8\u05E8\u05DD \u05D0\u05D5\u05E9\u05E8\u05D5. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
+    policyReviewDirty = false;
     if (tab === "settings" && !confirm("\u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05E9\u05DC\u05D0 \u05E0\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D8\u05D5\u05E4\u05E1 \u05D4\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
     load().catch(showLoadError);
   };
@@ -31109,7 +31184,7 @@ function account() {
 function showLoadError(err) {
   trip = null;
   $("#tabs").innerHTML = "";
-  $("#view").innerHTML = "<section><h2>\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D8\u05E2\u05D5\u05DF \u05D0\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC</h2><p>" + esc3(err.message) + '</p><button id="retry">\u05E0\u05E1\u05D4 \u05E9\u05D5\u05D1</button></section>';
+  $("#view").innerHTML = "<section><h2>\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D8\u05E2\u05D5\u05DF \u05D0\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC</h2><p>" + esc4(err.message) + '</p><button id="retry">\u05E0\u05E1\u05D4 \u05E9\u05D5\u05D1</button></section>';
   $("#retry").onclick = () => load().catch(showLoadError);
   status("\u05D4\u05DE\u05D9\u05D3\u05E2 \u05DE\u05D4\u05E2\u05E0\u05DF \u05DC\u05D0 \u05E0\u05D8\u05E2\u05DF.");
 }
@@ -31170,7 +31245,7 @@ function destinationHome() {
   window.dispatchEvent(new Event("scroll"));
   $("#tabs").innerHTML = "";
   document.documentElement.style.setProperty("--navigation-space", "24px");
-  $("#view").innerHTML = '<section class="destination-home"><div class="row"><div><h2>\u05DC\u05D0\u05DF \u05D9\u05D5\u05E6\u05D0\u05D9\u05DD?</h2><p class="muted">\u05D1\u05D7\u05E8 \u05D9\u05E2\u05D3 \u05DC\u05EA\u05DB\u05E0\u05D5\u05DF \u05D4\u05DE\u05E1\u05DC\u05D5\u05DC, \u05D4\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D5\u05D4\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05DC\u05DA</p></div><button id="add-destination">+ \u05D9\u05E2\u05D3 \u05D7\u05D3\u05E9</button></div><div class="destination-grid">' + destinations.map((d) => '<article class="destination-card ' + (d.is_active === false ? "destination-inactive" : "") + '"><span class="badge">' + (d.is_active === false ? "\u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC" : "\u05E4\u05E2\u05D9\u05DC") + "</span><h3>" + esc3(d.destination_name || d.title) + "</h3><p>" + esc3(d.settings.days) + " \u05D9\u05DE\u05D9\u05DD" + (d.settings.start ? " \xB7 " + esc3(d.settings.start) : " \xB7 \u05EA\u05D0\u05E8\u05D9\u05DA \u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + '</p><div class="row"><button data-destination-open="' + esc3(d.id) + '" class="primary">\u05E4\u05EA\u05D7 \u05EA\u05DB\u05E0\u05D5\u05DF</button><button data-destination-edit="' + esc3(d.id) + '">\u05E2\u05E8\u05D9\u05DB\u05EA \u05D9\u05E2\u05D3</button></div></article>').join("") + "</div>" + (destinations.length ? "" : "<p>\u05D4\u05D5\u05E1\u05E3 \u05D0\u05EA \u05D4\u05D9\u05E2\u05D3 \u05D4\u05E8\u05D0\u05E9\u05D5\u05DF \u05E9\u05DC\u05DA \u05DB\u05D3\u05D9 \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC.</p>") + "</section>";
+  $("#view").innerHTML = '<section class="destination-home"><div class="row"><div><h2>\u05DC\u05D0\u05DF \u05D9\u05D5\u05E6\u05D0\u05D9\u05DD?</h2><p class="muted">\u05D1\u05D7\u05E8 \u05D9\u05E2\u05D3 \u05DC\u05EA\u05DB\u05E0\u05D5\u05DF \u05D4\u05DE\u05E1\u05DC\u05D5\u05DC, \u05D4\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D5\u05D4\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05DC\u05DA</p></div><button id="add-destination">+ \u05D9\u05E2\u05D3 \u05D7\u05D3\u05E9</button></div><div class="destination-grid">' + destinations.map((d) => '<article class="destination-card ' + (d.is_active === false ? "destination-inactive" : "") + '"><span class="badge">' + (d.is_active === false ? "\u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC" : "\u05E4\u05E2\u05D9\u05DC") + "</span><h3>" + esc4(d.destination_name || d.title) + "</h3><p>" + esc4(d.settings.days) + " \u05D9\u05DE\u05D9\u05DD" + (d.settings.start ? " \xB7 " + esc4(d.settings.start) : " \xB7 \u05EA\u05D0\u05E8\u05D9\u05DA \u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + '</p><div class="row"><button data-destination-open="' + esc4(d.id) + '" class="primary">\u05E4\u05EA\u05D7 \u05EA\u05DB\u05E0\u05D5\u05DF</button><button data-destination-edit="' + esc4(d.id) + '">\u05E2\u05E8\u05D9\u05DB\u05EA \u05D9\u05E2\u05D3</button></div></article>').join("") + "</div>" + (destinations.length ? "" : "<p>\u05D4\u05D5\u05E1\u05E3 \u05D0\u05EA \u05D4\u05D9\u05E2\u05D3 \u05D4\u05E8\u05D0\u05E9\u05D5\u05DF \u05E9\u05DC\u05DA \u05DB\u05D3\u05D9 \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC.</p>") + "</section>";
   $("#add-destination").onclick = () => destinationEditor();
   $("#view").querySelectorAll("[data-destination-open]").forEach((b) => b.onclick = () => {
     if (busy) return;
@@ -31215,6 +31290,7 @@ function focusView() {
   }
 }
 function render() {
+  policyReviewDirty = false;
   routeCleanup?.();
   routeCleanup = null;
   if (!trip || !session) return;
@@ -31227,7 +31303,7 @@ function render() {
   });
   if (tab === "dashboard") {
     const bookings = trip.items.filter((x) => x.kind === "booking").map((x) => x.payload), tasks = trip.items.filter((x) => x.kind === "task");
-    $("#view").innerHTML = '<div class="cards">' + [["\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D9\u05E2\u05D3", trip.settings.budget ? money(trip.settings.budget) : "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2"], ["\u05E9\u05D5\u05DC\u05DD \u05D1\u05E4\u05D5\u05E2\u05DC", money(bookings.reduce((s, x) => s + Number(x.paid || 0), 0))], ["\u05D4\u05EA\u05D7\u05D9\u05D9\u05D1\u05D5\u05D9\u05D5\u05EA", money(bookings.filter((x) => ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(x.status)).reduce((s, x) => s + Number(x.cost || 0), 0))], ["\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05D1\u05D5\u05E6\u05E2\u05D5", tasks.filter((x) => x.payload.done).length + "/" + tasks.length]].map(([k, v]) => "<section><small>" + k + '</small><div class="metric">' + v + "</div></section>").join("") + "</div><section><h2>\u05EA\u05DE\u05D5\u05E0\u05EA \u05DE\u05E6\u05D1</h2><p>\u05DE\u05E9\u05DA \u05D4\u05D8\u05D9\u05D5\u05DC: " + esc3(trip.settings.days) + " \u05D9\u05DE\u05D9\u05DD | \u05D9\u05E6\u05D9\u05D0\u05D4: " + esc3(trip.settings.start || "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + "</p><p>\u05D4\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05E0\u05D8\u05E2\u05E0\u05D9\u05DD \u05DE\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05D7\u05D6\u05D5\u05E8 \u05DC\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D4 \u05D0\u05D5 \u05DC\u05D7\u05E5 \u05E2\u05DC \u05E8\u05E2\u05E0\u05DF \u05DB\u05D3\u05D9 \u05DC\u05E7\u05D1\u05DC \u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05DE\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D0\u05D7\u05E8.</p></section>";
+    $("#view").innerHTML = '<div class="cards">' + [["\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D9\u05E2\u05D3", trip.settings.budget ? money2(trip.settings.budget) : "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2"], ["\u05E9\u05D5\u05DC\u05DD \u05D1\u05E4\u05D5\u05E2\u05DC", money2(bookings.reduce((s, x) => s + Number(x.paid || 0), 0))], ["\u05D4\u05EA\u05D7\u05D9\u05D9\u05D1\u05D5\u05D9\u05D5\u05EA", money2(bookings.filter((x) => ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(x.status)).reduce((s, x) => s + Number(x.cost || 0), 0))], ["\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05D1\u05D5\u05E6\u05E2\u05D5", tasks.filter((x) => x.payload.done).length + "/" + tasks.length]].map(([k, v]) => "<section><small>" + k + '</small><div class="metric">' + v + "</div></section>").join("") + "</div><section><h2>\u05EA\u05DE\u05D5\u05E0\u05EA \u05DE\u05E6\u05D1</h2><p>\u05DE\u05E9\u05DA \u05D4\u05D8\u05D9\u05D5\u05DC: " + esc4(trip.settings.days) + " \u05D9\u05DE\u05D9\u05DD | \u05D9\u05E6\u05D9\u05D0\u05D4: " + esc4(trip.settings.start || "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + "</p><p>\u05D4\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05E0\u05D8\u05E2\u05E0\u05D9\u05DD \u05DE\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05D7\u05D6\u05D5\u05E8 \u05DC\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D4 \u05D0\u05D5 \u05DC\u05D7\u05E5 \u05E2\u05DC \u05E8\u05E2\u05E0\u05DF \u05DB\u05D3\u05D9 \u05DC\u05E7\u05D1\u05DC \u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05DE\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D0\u05D7\u05E8.</p></section>";
     return;
   }
   if (tab === "settings") {
@@ -31265,26 +31341,26 @@ function render() {
     const category = (x) => (tab === "task" ? x.payload.category : x.payload.type)?.trim() || (tab === "task" ? "\u05DB\u05DC\u05DC\u05D9" : "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"), counts = /* @__PURE__ */ new Map();
     items.forEach((x) => counts.set(category(x), (counts.get(category(x)) || 0) + 1));
     if (tab === "booking") {
-      for (const p of trip.settings.bookingPolicies || []) if (!counts.has(p.category)) counts.set(p.category, 0);
+      for (const p of [...trip.settings.bookingPolicies || [], ...trip.settings.bookingPolicyProposals || []]) if (!counts.has(p.category)) counts.set(p.category, 0);
     }
     if (categories[tab] !== null && !counts.has(categories[tab])) categories[tab] = null;
     categoryOptions = [null, ...[...counts.keys()].sort((a, b) => a.localeCompare(b, "he"))];
-    categoryMenu = '<div class="place-filter-bar"><label for="place-category">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</label><select id="place-category" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA ' + esc3(tabs.find((x) => x[0] === tab)[1]) + '">' + categoryOptions.map((name, index) => '<option value="' + index + '" ' + (categories[tab] === name ? "selected" : "") + ">" + esc3(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</option>").join("") + "</select></div>";
+    categoryMenu = '<div class="place-filter-bar"><label for="place-category">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</label><select id="place-category" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA ' + esc4(tabs.find((x) => x[0] === tab)[1]) + '">' + categoryOptions.map((name, index) => '<option value="' + index + '" ' + (categories[tab] === name ? "selected" : "") + ">" + esc4(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</option>").join("") + "</select></div>";
     if (categories[tab] !== null) items = items.filter((x) => category(x) === categories[tab]);
   }
   let workflowMenu = "", recordsMarkup = "";
   const managed = ["booking", "task"].includes(tab), statistics = managed && workViews[tab] === "stats", policyView = tab === "booking" && workViews.booking === "policies";
   if (managed) {
-    workflowMenu = '<div class="workflow-views" role="group" aria-label="\u05EA\u05E6\u05D5\u05D2\u05EA ' + esc3(tabs.find((x) => x[0] === tab)[1]) + '">' + [["current", "\u05DE\u05E6\u05D1 \u05E0\u05D5\u05DB\u05D7\u05D9"], ["stats", "\u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA"], ...tab === "booking" ? [["policies", "\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D4\u05D6\u05DE\u05E0\u05D4"]] : []].map(([id, label]) => '<button type="button" data-work-view="' + id + '" aria-pressed="' + (workViews[tab] === id) + '" class="' + (workViews[tab] === id ? "active" : "") + '">' + label + "</button>").join("") + "</div>";
-    if (policyView) recordsMarkup = policiesMarkup(trip.items, trip.settings.bookingPolicies || [], categories.booking);
+    workflowMenu = '<div class="workflow-views" role="group" aria-label="\u05EA\u05E6\u05D5\u05D2\u05EA ' + esc4(tabs.find((x) => x[0] === tab)[1]) + '">' + [["current", "\u05DE\u05E6\u05D1 \u05E0\u05D5\u05DB\u05D7\u05D9"], ["stats", "\u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA"], ...tab === "booking" ? [["policies", "\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D4\u05D6\u05DE\u05E0\u05D4"]] : []].map(([id, label]) => '<button type="button" data-work-view="' + id + '" aria-pressed="' + (workViews[tab] === id) + '" class="' + (workViews[tab] === id ? "active" : "") + '">' + label + "</button>").join("") + "</div>";
+    if (policyView) recordsMarkup = policiesMarkup(trip.items, trip.settings.bookingPolicies || [], categories.booking, trip.settings);
     else if (statistics) recordsMarkup = statisticsMarkup(items);
     else {
       workflowMenu += '<div class="place-filter-bar"><label for="workflow-filter">\u05E1\u05D8\u05D8\u05D5\u05E1</label><select id="workflow-filter"><option value="">\u05DB\u05DC \u05D4\u05E1\u05D8\u05D8\u05D5\u05E1\u05D9\u05DD</option>' + workflowStatuses.map(([id, label]) => '<option value="' + id + '" ' + (statusFilters[tab] === id ? "selected" : "") + ">" + label + " (" + items.filter((x) => workflowStatus(x) === id).length + ")</option>").join("") + "</select></div>";
       if (statusFilters[tab]) items = items.filter((x) => workflowStatus(x) === statusFilters[tab]);
     }
   }
-  if (!statistics && !policyView) recordsMarkup = '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items, trip.destination_name) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05D4\u05E6\u05D2\u05D4 \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9.</p>");
-  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">' + (policyView ? "+ \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D7\u05D3\u05E9\u05D4" : "+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8") + "</button></div>" + workflowMenu + categoryMenu + recordsMarkup + "</section>";
+  if (!statistics && !policyView) recordsMarkup = '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items, trip.destination_name) : tab === "booking" ? '<button type="button" data-booking-policy="' + esc4(x.payload.type?.trim() || "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4") + '">\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8</button>' : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05D4\u05E6\u05D2\u05D4 \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9.</p>");
+  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">' + (policyView ? "+ \u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05DC\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4" : "+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8") + "</button></div>" + workflowMenu + categoryMenu + recordsMarkup + "</section>";
   $("#view").querySelectorAll("[data-route-view]").forEach((b) => b.onclick = () => {
     routeView = b.dataset.routeView;
     render();
@@ -31315,6 +31391,33 @@ function render() {
     render();
     $("#place-category")?.focus({ preventScroll: true });
   };
+  $("#view").querySelectorAll("[data-booking-policy]").forEach((b) => b.onclick = () => {
+    categories.booking = b.dataset.bookingPolicy;
+    workViews.booking = "policies";
+    render();
+    focusView();
+  });
+  $("#view").querySelectorAll("[data-policy-review]").forEach((form) => {
+    form.onchange = () => {
+      policyReviewDirty = true;
+    };
+    const review = async (decision) => {
+      const ids = [...form.querySelectorAll("input[name=option]:checked")].map((x) => x.value);
+      if (decision === "approved" && !ids.length) {
+        form.querySelector("[data-policy-feedback]").textContent = "\u05D1\u05D7\u05E8 \u05DC\u05E4\u05D7\u05D5\u05EA \u05D0\u05E4\u05E9\u05E8\u05D5\u05EA \u05D0\u05D7\u05EA \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8";
+        return;
+      }
+      const okay = await saveOperation(() => repo.reviewPolicy(trip.id, trip.version, form.dataset.policyReview, ids, decision));
+      if (okay) await afterSave();
+      else form.querySelector("[data-policy-feedback]").textContent = $("#message").textContent;
+    };
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      review("approved");
+    };
+    const reject = form.querySelector("[data-reject-policy]");
+    if (reject) reject.onclick = () => review("rejected");
+  });
   $("#view").querySelectorAll("[data-policy-category]").forEach((b) => b.onclick = () => policyEditor(b.dataset.policyCategory));
   $("#add").onclick = () => policyView ? policyEditor() : edit(tab);
   $("#view").querySelectorAll("[data-id]").forEach((card) => {
@@ -31336,7 +31439,7 @@ function policyEditor(category = "") {
   viewEpoch++;
   const existing = (trip.settings.bookingPolicies || []).find((p) => p.category === category);
   const tripId = trip.id, version5 = trip.version, settings2 = structuredClone(trip.settings);
-  $("#editor").innerHTML = '<form id="policy-form"><h2>\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D4\u05D6\u05DE\u05E0\u05D4</h2>' + field("category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4", category) + '<div id="policy-fields">' + policyFormMarkup(category, existing) + '</div><p class="muted">\u05D4\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05DE\u05D9\u05D5\u05E2\u05D3\u05EA \u05DC\u05D4\u05E0\u05D7\u05D9\u05D9\u05EA \u05D4\u05E1\u05D5\u05DB\u05DF \u05D4\u05E2\u05EA\u05D9\u05D3\u05D9. \u05D3\u05E8\u05D9\u05E9\u05D5\u05EA \u05E9\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D0\u05DE\u05EA \u05D9\u05D3\u05E8\u05E9\u05D5 \u05D1\u05D9\u05E8\u05D5\u05E8; \u05E9\u05DE\u05D9\u05E8\u05EA \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05D0\u05D9\u05E0\u05D4 \u05D0\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D1\u05E6\u05E2 \u05E8\u05DB\u05D9\u05E9\u05D4.</p><div class="row form-actions"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA</button><button type="button" id="cancel-policy">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p></form>';
+  $("#editor").innerHTML = '<form id="policy-form"><h2>\u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05E8\u05D0\u05E9\u05D5\u05E0\u05D9\u05D5\u05EA \u05DC\u05E1\u05D5\u05DB\u05DF</h2>' + field("category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4", category) + '<div id="policy-fields">' + policyFormMarkup(category, existing) + '</div><p class="muted">\u05D4\u05E1\u05D5\u05DB\u05DF \u05D9\u05DE\u05E6\u05D0 \u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05DC\u05E4\u05D9 \u05D4\u05D4\u05E0\u05D7\u05D9\u05D5\u05EA, \u05D5\u05D9\u05E6\u05D9\u05D2 \u05D0\u05D5\u05EA\u05DF \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8\u05DA. \u05D4\u05EA\u05E7\u05E6\u05D9\u05D1 \u05E0\u05D2\u05D6\u05E8 \u05DE\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D4\u05D8\u05D9\u05D5\u05DC \u05D4\u05DB\u05D5\u05DC\u05DC.</p><div class="row form-actions"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D4\u05E0\u05D7\u05D9\u05D5\u05EA</button><button type="button" id="cancel-policy">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p></form>';
   const form = $("#policy-form");
   form.elements.category.required = true;
   form.elements.category.maxLength = 100;
@@ -31414,7 +31517,7 @@ function download(text) {
 function preview(parsed) {
   const plan = previewImport(trip.items, parsed.items);
   const tripId = trip.id;
-  $("#editor").innerHTML = "<h2>\u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4 \u05DC\u05D9\u05D9\u05D1\u05D5\u05D0</h2><p>\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD: " + plan.add.length + " | \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD \u05E9\u05D9\u05D9\u05E9\u05D0\u05E8\u05D5 \u05DC\u05DC\u05D0 \u05E9\u05D9\u05E0\u05D5\u05D9: " + plan.skip.length + "</p><p>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC \u05D5\u05D4\u05DE\u05D9\u05D3\u05E2 \u05D4\u05E7\u05D9\u05D9\u05DD \u05DC\u05D0 \u05D9\u05D5\u05D7\u05DC\u05E4\u05D5.</p><ul>" + plan.add.map((x) => "<li>" + esc3(x.payload.place ?? x.payload.name ?? x.payload.title) + "</li>").join("") + '</ul><div class="row"><button id="confirmimport">\u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05E2\u05E0\u05DF</button><button id="cancelimport">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div>';
+  $("#editor").innerHTML = "<h2>\u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4 \u05DC\u05D9\u05D9\u05D1\u05D5\u05D0</h2><p>\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD: " + plan.add.length + " | \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD \u05E9\u05D9\u05D9\u05E9\u05D0\u05E8\u05D5 \u05DC\u05DC\u05D0 \u05E9\u05D9\u05E0\u05D5\u05D9: " + plan.skip.length + "</p><p>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC \u05D5\u05D4\u05DE\u05D9\u05D3\u05E2 \u05D4\u05E7\u05D9\u05D9\u05DD \u05DC\u05D0 \u05D9\u05D5\u05D7\u05DC\u05E4\u05D5.</p><ul>" + plan.add.map((x) => "<li>" + esc4(x.payload.place ?? x.payload.name ?? x.payload.title) + "</li>").join("") + '</ul><div class="row"><button id="confirmimport">\u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05E2\u05E0\u05DF</button><button id="cancelimport">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div>';
   $("#cancelimport").onclick = () => $("#editor").close();
   $("#confirmimport").onclick = async () => {
     if (await saveOperation(() => repo.importItems(tripId, plan.add))) {
@@ -31425,7 +31528,7 @@ function preview(parsed) {
   $("#editor").showModal();
 }
 function settings() {
-  $("#view").innerHTML = "<section><h2>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA " + esc3(trip.destination_name || "\u05D4\u05D9\u05E2\u05D3") + '</h2><form id="settingsform">' + field("start", "\u05EA\u05D0\u05E8\u05D9\u05DA \u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05EA\u05D5\u05DB\u05E0\u05DF", trip.settings.start, "date") + field("days", "\u05DE\u05E1\u05E4\u05E8 \u05D9\u05DE\u05D9\u05DD", trip.settings.days, "number") + field("budget", "\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DB\u05D5\u05DC\u05DC \u20AA", trip.settings.budget, "number") + '<button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D1\u05E2\u05E0\u05DF</button></form></section><section><h2>\u05D2\u05D9\u05D1\u05D5\u05D9 \u05D5\u05D4\u05E2\u05D1\u05E8\u05EA \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD</h2><p>\u05D4\u05DE\u05D9\u05D3\u05E2 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05DE\u05D5\u05DE\u05DC\u05E5 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D2\u05D9\u05D1\u05D5\u05D9 \u05DC\u05E4\u05E0\u05D9 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D2\u05D3\u05D5\u05DC\u05D9\u05DD.</p><button id="export">\u05D9\u05E6\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON</button><label>\u05D9\u05D1\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON<input id="import" type="file" accept="application/json,.json"></label><button id="localimport">\u05D4\u05E2\u05D1\u05E8 \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05DE\u05D4\u05D2\u05E8\u05E1\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D1\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D6\u05D4</button><p>\u05D4\u05D9\u05D9\u05D1\u05D5\u05D0 \u05DE\u05D5\u05E1\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD \u05DC\u05D0\u05D7\u05E8 \u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4. \u05D4\u05D5\u05D0 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05D5\u05D7\u05E7 \u05D0\u05D5 \u05DE\u05D7\u05DC\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD.</p></section>';
+  $("#view").innerHTML = "<section><h2>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA " + esc4(trip.destination_name || "\u05D4\u05D9\u05E2\u05D3") + '</h2><form id="settingsform">' + field("start", "\u05EA\u05D0\u05E8\u05D9\u05DA \u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05EA\u05D5\u05DB\u05E0\u05DF", trip.settings.start, "date") + field("days", "\u05DE\u05E1\u05E4\u05E8 \u05D9\u05DE\u05D9\u05DD", trip.settings.days, "number") + field("budget", "\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DB\u05D5\u05DC\u05DC \u20AA", trip.settings.budget, "number") + '<button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D1\u05E2\u05E0\u05DF</button></form></section><section><h2>\u05D2\u05D9\u05D1\u05D5\u05D9 \u05D5\u05D4\u05E2\u05D1\u05E8\u05EA \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD</h2><p>\u05D4\u05DE\u05D9\u05D3\u05E2 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05DE\u05D5\u05DE\u05DC\u05E5 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D2\u05D9\u05D1\u05D5\u05D9 \u05DC\u05E4\u05E0\u05D9 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D2\u05D3\u05D5\u05DC\u05D9\u05DD.</p><button id="export">\u05D9\u05E6\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON</button><label>\u05D9\u05D1\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON<input id="import" type="file" accept="application/json,.json"></label><button id="localimport">\u05D4\u05E2\u05D1\u05E8 \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05DE\u05D4\u05D2\u05E8\u05E1\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D1\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D6\u05D4</button><p>\u05D4\u05D9\u05D9\u05D1\u05D5\u05D0 \u05DE\u05D5\u05E1\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD \u05DC\u05D0\u05D7\u05E8 \u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4. \u05D4\u05D5\u05D0 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05D5\u05D7\u05E7 \u05D0\u05D5 \u05DE\u05D7\u05DC\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD.</p></section>';
   $("#settingsform").onsubmit = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target), settings2 = { ...trip.settings, start: fd.get("start"), days: Number(fd.get("days")), budget: Number(fd.get("budget")), currency: "ILS" };
@@ -31487,7 +31590,7 @@ $("#editor").addEventListener("cancel", (e) => {
   if (busy) e.preventDefault();
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && session && !busy && tab !== "settings" && !$("#editor").open) load().catch(showLoadError);
+  if (document.visibilityState === "visible" && !policyReviewDirty && session && !busy && tab !== "settings" && !$("#editor").open) load().catch(showLoadError);
 });
 auth.session().then((next) => {
   if (authVersion === 0) return applySession(next);
@@ -31505,7 +31608,7 @@ if (typeof ResizeObserver === "function") {
   navigationObserver.observe($("#tabs"));
 }
 window.setInterval(() => {
-  if (session && trip && !busy && ["booking", "task"].includes(tab) && !$("#editor").open && document.visibilityState === "visible") load().catch((e) => status("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E8\u05E2\u05E0\u05DF \u05E1\u05D8\u05D8\u05D5\u05E1\u05D9\u05DD: " + e.message));
+  if (session && trip && !policyReviewDirty && !busy && ["booking", "task"].includes(tab) && !$("#editor").open && document.visibilityState === "visible") load().catch((e) => status("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E8\u05E2\u05E0\u05DF \u05E1\u05D8\u05D8\u05D5\u05E1\u05D9\u05DD: " + e.message));
 }, 3e4);
 /*! Bundled license information:
 
