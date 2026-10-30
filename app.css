@@ -1633,3 +1633,16 @@ main a {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+.daily-lodging {
+  border-block-start: 1px solid var(--border,#D4E1DE);
+  margin-block-start: 16px;
+  padding-block-start: 16px;
+}
+.daily-lodging h4 {
+  margin: 0 0 8px;
+}
+.daily-lodging small {
+  display: block;
+  margin-block-start: 12px;
+  color: #526B6D;
+}

@@ -30543,16 +30543,16 @@ function createRepository(client2) {
   };
 }
 
-// src/route-map.js
-var import_leaflet = __toESM(require_leaflet_src(), 1);
-
-// src/map-popup-layout.js
-function popupDimensions(width, height) {
-  const maxWidth = Math.max(80, Math.min(340, (width || 320) - 70)), maxHeight = Math.max(80, (height || 340) - 110);
-  return { maxWidth, maxHeight, minWidth: Math.min(120, maxWidth) };
-}
-
 // src/route-points.js
+function dailyDestination(payload) {
+  let query = "";
+  try {
+    const u = new URL(payload.url);
+    if (["www.google.com", "maps.google.com", "google.com"].includes(u.hostname) && u.pathname.startsWith("/maps")) query = u.searchParams.get("query") || u.searchParams.get("destination") || u.searchParams.get("q") || "";
+  } catch {
+  }
+  return { label: payload.place, query: query || payload.place + " Thailand" };
+}
 var areas = [
   { aliases: ["\u05E6\u05F3\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "\u05E6\u2019\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "\u05E6\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "chiang mai"], lat: 18.7883, lng: 98.9853, query: "Chiang Mai, Thailand" },
   { aliases: ["chom thong", "\u05E6\u05F3\u05D5\u05DD \u05EA\u05D5\u05E0\u05D2"], lat: 18.419, lng: 98.68, query: "Chom Thong, Chiang Mai, Thailand" },
@@ -30590,7 +30590,7 @@ function position(payload) {
 function routePoints(items) {
   return items.filter((x) => x.kind === "stop").map((x) => {
     const p = position(x.payload);
-    return p ? { ...p, id: x.id, day: x.payload.day, label: x.payload.place, kind: x.payload.kind } : null;
+    return p ? { ...p, id: x.id, day: x.payload.day, label: x.payload.place, kind: x.payload.kind, destination: dailyDestination(x.payload) } : null;
   }).filter(Boolean).sort((a, b) => a.day - b.day);
 }
 function groupRoutePoints(points) {
@@ -30603,7 +30603,7 @@ function groupRoutePoints(points) {
   return [...groups.values()];
 }
 function navigationLinks(point) {
-  const exact = point.precision === "exact" && pair(point.lat, point.lng), target = exact ? point.lat + "," + point.lng : point.query || point.label + " Thailand";
+  const exact = point.precision === "exact" && pair(point.lat, point.lng), target = exact ? point.lat + "," + point.lng : point.destination?.query || point.query || point.label + " Thailand";
   const google = new URL("https://www.google.com/maps/dir/");
   google.searchParams.set("api", "1");
   google.searchParams.set("destination", target);
@@ -30614,6 +30614,66 @@ function navigationLinks(point) {
     waze.searchParams.set("navigate", "yes");
   } else waze.searchParams.set("q", target);
   return { google: google.href, waze: waze.href };
+}
+
+// src/ui-components.js
+var escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+var paths = { route: '<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a4 4 0 0 1 0 8H9a4 4 0 0 0-4 4"/>', booking: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h3"/>', place: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>', task: '<path d="m4 7 2 2 4-4m3 2h7M4 15l2 2 4-4m3 2h7"/>', gear: '<rect x="5" y="6" width="14" height="15" rx="3"/><path d="M9 6V4a3 3 0 0 1 6 0v2m-6 7h6m-6 4h6"/>', dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="18" width="7" height="3" rx="1"/>', settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>', more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>', edit: '<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 15Z"/>', trash: '<path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>', chevron: '<path d="m6 9 6 6 6-6"/>', refresh: '<path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 3M5 15a8 8 0 0 0 13 3"/>', shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/>' };
+function icon(name) {
+  return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (paths[name] ?? paths.route) + "</svg>";
+}
+var formatMoney = (value) => new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(value || 0));
+function navigationMarkup(tabs2, active) {
+  const primary = ["stop", "booking", "place", "task"], short = { stop: "\u05DE\u05E1\u05DC\u05D5\u05DC", booking: "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA", place: "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA", task: "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA" }, glyph = { stop: "route", booking: "booking", place: "place", task: "task", gear: "gear", dashboard: "dashboard", settings: "settings" };
+  const button = ([id, label], main = false) => '<button type="button" data-tab="' + id + '" class="nav-item ' + (active === id ? "active" : "") + '" ' + (active === id ? 'aria-current="page"' : "") + ">" + icon(glyph[id]) + "<span>" + escapeHtml(main ? short[id] : label) + "</span></button>";
+  const extra = tabs2.filter(([id]) => !primary.includes(id));
+  return primary.map((id) => button(tabs2.find((x) => x[0] === id), true)).join("") + '<details id="nav-more" class="nav-more ' + (!primary.includes(active) ? "active" : "") + '"><summary aria-label="\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05E0\u05D5\u05E1\u05E4\u05D5\u05EA">' + icon("more") + '<span>\u05E2\u05D5\u05D3</span></summary><div class="nav-menu">' + extra.map((x) => button(x)).join("") + "</div></details>";
+}
+function externalLink(url, label) {
+  try {
+    const u = new URL(url);
+    return ["https:", "http:"].includes(u.protocol) ? '<a class="record-link" href="' + escapeHtml(u.href) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(label) + " \u2197</a>" : "";
+  } catch {
+    return "";
+  }
+}
+function recordCard(item, fields2, extra = "") {
+  const p = item.payload, title = p.name ?? p.place ?? p.title ?? "\u05E4\u05E8\u05D9\u05D8", isStop = item.kind === "stop", isTask = item.kind === "task";
+  const badges = [isStop ? "\u05D9\u05D5\u05DD " + p.day : p.type ?? p.category ?? "", isStop ? p.kind : "", p.status ?? (isTask ? p.done ? "\u05D4\u05D5\u05E9\u05DC\u05DE\u05D4" : "\u05DC\u05D1\u05D9\u05E6\u05D5\u05E2" : "")].filter(Boolean);
+  const price = item.kind === "booking" ? '<div class="record-price">' + (Number(p.cost) > 0 || ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(p.status) && p.cost !== void 0 ? escapeHtml(formatMoney(p.cost)) : "\u05D8\u05E8\u05DD \u05EA\u05D5\u05DE\u05D7\u05E8") + "</div>" : "";
+  const omitted = /* @__PURE__ */ new Set(["name", "place", "title", "type", "category", "status", "day", "kind", "notes"]);
+  if (item.kind === "booking") omitted.add("cost");
+  const meta = fields2.filter(([key]) => !omitted.has(key) && p[key] !== void 0 && p[key] !== "").map(([key, label]) => {
+    const value = ["url", "guide"].includes(key) ? externalLink(p[key], label) : escapeHtml(["paid", "cost"].includes(key) ? formatMoney(p[key]) : p[key]);
+    return value ? "<div><dt>" + escapeHtml(label) + "</dt><dd>" + value + "</dd></div>" : "";
+  }).join("");
+  const notes = p.notes ? String(p.notes) : "";
+  const noteMarkup = notes.length > 170 ? '<p class="record-excerpt">' + escapeHtml(notes.slice(0, 125)) + '\u2026</p><details class="card-notes"><summary><span>\u05E4\u05E8\u05D8\u05D9 \u05D4\u05EA\u05DB\u05E0\u05D5\u05DF</span>' + icon("chevron") + "</summary><p>" + escapeHtml(notes) + "</p></details>" : notes ? '<p class="record-notes">' + escapeHtml(notes) + "</p>" : "";
+  return '<article class="card record-card ' + (isTask && p.done ? "is-complete" : "") + '" data-id="' + escapeHtml(item.id) + '" aria-labelledby="record-' + escapeHtml(item.id) + '"><div class="record-badges">' + badges.map((x) => '<span class="badge">' + escapeHtml(x) + "</span>").join("") + '</div><h3 class="record-title" id="record-' + escapeHtml(item.id) + '">' + escapeHtml(title) + "</h3>" + price + (isTask ? '<label class="task-toggle"><input type="checkbox" aria-labelledby="record-' + escapeHtml(item.id) + " task-label-" + escapeHtml(item.id) + '" ' + (p.done ? "checked" : "") + '><span id="task-label-' + escapeHtml(item.id) + '">\u05D4\u05DE\u05E9\u05D9\u05DE\u05D4 \u05D4\u05D5\u05E9\u05DC\u05DE\u05D4</span></label>' : "") + (meta ? '<dl class="record-meta">' + meta + "</dl>" : "") + noteMarkup + extra + '<div class="record-actions"><button type="button" data-action="edit">' + icon("edit") + '\u05E2\u05E8\u05D9\u05DB\u05D4</button><button type="button" data-action="delete" class="danger">' + icon("trash") + "\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></article>";
+}
+
+// src/daily-navigation.js
+function lodgingForDay(stop, items) {
+  const match = String(stop.payload.notes || "").match(/(?:^|\n)לינה:\s*([^\n.]+)(?:\.|$)/);
+  if (!match || /^ללא\b|^ללא\s/.test(match[1].trim())) return null;
+  const label = match[1].trim(), name = label.split(/\s+[–—]\s+/)[0].trim();
+  const booking = items.find((x) => x.kind === "booking" && x.payload.type === "\u05DE\u05DC\u05D5\u05DF" && (x.payload.supplier === name || x.payload.name?.startsWith(name + " \u2013")));
+  return { label, query: name + " " + (booking?.payload.name?.split(/\s+[–—]\s+/).slice(1).join(" ") || stop.payload.place) + " Thailand", status: booking?.payload.status || "\u05DC\u05D1\u05D3\u05D9\u05E7\u05D4" };
+}
+function lodgingMarkup(stop, items) {
+  const lodging = lodgingForDay(stop, items);
+  if (!lodging) return "";
+  const links = navigationLinks({ ...lodging, precision: "unknown" });
+  return '<div class="daily-lodging"><h4>\u05DC\u05D9\u05E0\u05D4 \u05D1\u05E1\u05D9\u05D5\u05DD \u05D4\u05D9\u05D5\u05DD</h4><p>' + escapeHtml(lodging.label) + ' <span class="badge">' + escapeHtml(lodging.status) + '</span></p><div class="row">' + [["google", "Google Maps"], ["waze", "Waze"]].map(([key, name]) => '<a class="btn" data-lodging-navigation="' + key + '" href="' + escapeHtml(links[key]) + '" target="_blank" rel="noopener noreferrer">\u05E0\u05D9\u05D5\u05D5\u05D8 \u05DC\u05DC\u05D9\u05E0\u05D4 \u05D1\u05BE' + name + "</a>").join("") + "</div><small>\u05D7\u05D9\u05E4\u05D5\u05E9 \u05DE\u05E7\u05D5\u05DD \u05D4\u05DC\u05D9\u05E0\u05D4 \u05D4\u05E8\u05E9\u05D5\u05DD \u05D1\u05EA\u05DB\u05E0\u05D5\u05DF; \u05D9\u05E9 \u05DC\u05D0\u05DE\u05EA \u05D0\u05EA \u05D4\u05E0\u05DB\u05E1 \u05D5\u05D4\u05DB\u05EA\u05D5\u05D1\u05EA \u05DC\u05E4\u05E0\u05D9 \u05D9\u05E6\u05D9\u05D0\u05D4.</small></div>";
+}
+
+// src/route-map.js
+var import_leaflet = __toESM(require_leaflet_src(), 1);
+
+// src/map-popup-layout.js
+function popupDimensions(width, height) {
+  const maxWidth = Math.max(80, Math.min(340, (width || 320) - 70)), maxHeight = Math.max(80, (height || 340) - 110);
+  return { maxWidth, maxHeight, minWidth: Math.min(120, maxWidth) };
 }
 
 // src/route-map.js
@@ -30636,14 +30696,20 @@ function navigation(point) {
   }
   return row;
 }
-function stopSummary(point) {
+function stopSummary(point, onOpenDay) {
   const node = element("div", void 0, "map-stop");
   node.append(element("strong", "\u05D9\u05D5\u05DD " + point.day + " \xB7 " + point.label));
-  if (point.precision !== "exact") node.append(element("p", "\u05DE\u05D9\u05E7\u05D5\u05DD \u05DB\u05DC\u05DC\u05D9 \u05E9\u05DC \u05D4\u05D9\u05E2\u05D3; \u05D9\u05E9 \u05DC\u05D1\u05D7\u05D5\u05E8 \u05DB\u05EA\u05D5\u05D1\u05EA \u05DE\u05D3\u05D5\u05D9\u05E7\u05EA \u05D1\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D9\u05EA \u05D4\u05E0\u05D9\u05D5\u05D5\u05D8.", "muted"));
+  node.append(element("p", "\u05D9\u05E2\u05D3 \u05D1\u05EA\u05D5\u05DB\u05E0\u05D9\u05EA \u05D4\u05D9\u05D5\u05DE\u05D9\u05EA: " + (point.destination?.query || point.label)));
+  if (point.precision !== "exact") node.append(element("small", "\u05E1\u05D9\u05DB\u05EA \u05D4\u05DE\u05E4\u05D4 \u05DE\u05E6\u05D9\u05D9\u05E0\u05EA \u05D0\u05D6\u05D5\u05E8; \u05D4\u05E0\u05D9\u05D5\u05D5\u05D8 \u05DE\u05D7\u05E4\u05E9 \u05D0\u05EA \u05D9\u05E2\u05D3 \u05D4\u05D9\u05D5\u05DD. \u05D9\u05E9 \u05DC\u05D0\u05DE\u05EA \u05DB\u05EA\u05D5\u05D1\u05EA \u05DC\u05E4\u05E0\u05D9 \u05D9\u05E6\u05D9\u05D0\u05D4.", "muted"));
   node.append(navigation(point));
+  const open = element("button", "\u05E4\u05EA\u05D7 \u05EA\u05D5\u05DB\u05E0\u05D9\u05EA \u05DC\u05D9\u05D5\u05DD " + point.day, "btn");
+  open.type = "button";
+  open.dataset.openDay = point.id;
+  open.onclick = () => onOpenDay?.(point.id);
+  node.append(open);
   return node;
 }
-function mountRouteMap(root, items) {
+function mountRouteMap(root, items, onOpenDay) {
   const stops = items.filter((x) => x.kind === "stop").sort((a, b) => a.payload.day - b.payload.day), points = routePoints(stops), groups = groupRoutePoints(points), mapped = new Set(points.map((x) => x.id));
   const summary = element("p", groups.length + " \u05E0\u05E7\u05D5\u05D3\u05D5\u05EA \u05E2\u05DC \u05D4\u05DE\u05E4\u05D4 \xB7 " + points.length + " \u05E2\u05E6\u05D9\u05E8\u05D5\u05EA \u05DE\u05DE\u05D5\u05E7\u05DE\u05D5\u05EA \u05DE\u05EA\u05D5\u05DA " + stops.length);
   root.append(summary);
@@ -30660,12 +30726,12 @@ function mountRouteMap(root, items) {
     missing.id = "unmapped-stops";
     missing.append(element("h3", "\u05E2\u05E6\u05D9\u05E8\u05D5\u05EA \u05DC\u05DC\u05D0 \u05DE\u05D9\u05E7\u05D5\u05DD \u05D1\u05DE\u05E4\u05D4"));
     missing.append(element("p", "\u05D0\u05E4\u05E9\u05E8 \u05DC\u05D4\u05D5\u05E1\u05D9\u05E3 \u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 \u05D5\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA \u05D1\u05E2\u05E8\u05D9\u05DB\u05EA \u05D4\u05E2\u05E6\u05D9\u05E8\u05D4 \u05D1\u05EA\u05D5\u05DB\u05E0\u05D9\u05EA \u05D4\u05D9\u05D5\u05DE\u05D9\u05EA."));
-    for (const item of unmapped) missing.append(stopSummary({ id: item.id, day: item.payload.day, label: item.payload.place, precision: "unknown" }));
+    for (const item of unmapped) missing.append(stopSummary({ id: item.id, day: item.payload.day, label: item.payload.place, destination: dailyDestination(item.payload), precision: "unknown" }, onOpenDay));
     root.append(missing);
   }
   const list = element("details");
   list.append(element("summary", "\u05DB\u05DC \u05E0\u05E7\u05D5\u05D3\u05D5\u05EA \u05D4\u05DE\u05E1\u05DC\u05D5\u05DC (" + stops.length + ")"));
-  for (const item of stops) list.append(stopSummary(points.find((x) => x.id === item.id) ?? { day: item.payload.day, label: item.payload.place, precision: "unknown" }));
+  for (const item of stops) list.append(stopSummary(points.find((x) => x.id === item.id) ?? { day: item.payload.day, label: item.payload.place, destination: dailyDestination(item.payload), precision: "unknown" }, onOpenDay));
   root.append(list);
   root.append(element("p", "\u05D1\u05E0\u05E7\u05D5\u05D3\u05D5\u05EA \u05E9\u05DC \u05E9\u05D9\u05D8 \u05D0\u05D5 \u05D8\u05D9\u05E1\u05D4 \u05D9\u05E9 \u05DC\u05D1\u05D7\u05D5\u05E8 \u05D0\u05EA \u05D4\u05E8\u05E6\u05D9\u05E3 \u05D0\u05D5 \u05E9\u05D3\u05D4 \u05D4\u05EA\u05E2\u05D5\u05E4\u05D4 \u05D4\u05E8\u05DC\u05D5\u05D5\u05E0\u05D8\u05D9.", "muted"));
   if (!groups.length) {
@@ -30704,7 +30770,7 @@ function mountRouteMap(root, items) {
     const icon2 = import_leaflet.default.divIcon({ className: "route-marker", html: badge, iconSize: [44, 44], iconAnchor: [22, 22] });
     const popup = element("div");
     popup.dir = "rtl";
-    for (const point of group.points) popup.append(stopSummary(point));
+    for (const point of group.points) popup.append(stopSummary(point, onOpenDay));
     import_leaflet.default.marker([group.lat, group.lng], { icon: icon2, title: group.points.map((x) => "\u05D9\u05D5\u05DD " + x.day + " \xB7 " + x.label).join(" / ") }).bindPopup(popup, { ...popupDimensions(map.getSize().x, map.getSize().y), className: "route-popup", autoPanPadding: [16, 16], keepInView: true }).addTo(map);
   }
   map.fitBounds(groups.map((x) => [x.lat, x.lng]), { padding: [30, 30], maxZoom: 12 });
@@ -30715,42 +30781,6 @@ function mountRouteMap(root, items) {
     observer?.disconnect();
     map.remove();
   };
-}
-
-// src/ui-components.js
-var escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-var paths = { route: '<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a4 4 0 0 1 0 8H9a4 4 0 0 0-4 4"/>', booking: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h3"/>', place: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>', task: '<path d="m4 7 2 2 4-4m3 2h7M4 15l2 2 4-4m3 2h7"/>', gear: '<rect x="5" y="6" width="14" height="15" rx="3"/><path d="M9 6V4a3 3 0 0 1 6 0v2m-6 7h6m-6 4h6"/>', dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="18" width="7" height="3" rx="1"/>', settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>', more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>', edit: '<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 15Z"/>', trash: '<path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>', chevron: '<path d="m6 9 6 6 6-6"/>', refresh: '<path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 3M5 15a8 8 0 0 0 13 3"/>', shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/>' };
-function icon(name) {
-  return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (paths[name] ?? paths.route) + "</svg>";
-}
-var formatMoney = (value) => new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(value || 0));
-function navigationMarkup(tabs2, active) {
-  const primary = ["stop", "booking", "place", "task"], short = { stop: "\u05DE\u05E1\u05DC\u05D5\u05DC", booking: "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA", place: "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA", task: "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA" }, glyph = { stop: "route", booking: "booking", place: "place", task: "task", gear: "gear", dashboard: "dashboard", settings: "settings" };
-  const button = ([id, label], main = false) => '<button type="button" data-tab="' + id + '" class="nav-item ' + (active === id ? "active" : "") + '" ' + (active === id ? 'aria-current="page"' : "") + ">" + icon(glyph[id]) + "<span>" + escapeHtml(main ? short[id] : label) + "</span></button>";
-  const extra = tabs2.filter(([id]) => !primary.includes(id));
-  return primary.map((id) => button(tabs2.find((x) => x[0] === id), true)).join("") + '<details id="nav-more" class="nav-more ' + (!primary.includes(active) ? "active" : "") + '"><summary aria-label="\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05E0\u05D5\u05E1\u05E4\u05D5\u05EA">' + icon("more") + '<span>\u05E2\u05D5\u05D3</span></summary><div class="nav-menu">' + extra.map((x) => button(x)).join("") + "</div></details>";
-}
-function externalLink(url, label) {
-  try {
-    const u = new URL(url);
-    return ["https:", "http:"].includes(u.protocol) ? '<a class="record-link" href="' + escapeHtml(u.href) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(label) + " \u2197</a>" : "";
-  } catch {
-    return "";
-  }
-}
-function recordCard(item, fields2) {
-  const p = item.payload, title = p.name ?? p.place ?? p.title ?? "\u05E4\u05E8\u05D9\u05D8", isStop = item.kind === "stop", isTask = item.kind === "task";
-  const badges = [isStop ? "\u05D9\u05D5\u05DD " + p.day : p.type ?? p.category ?? "", isStop ? p.kind : "", p.status ?? (isTask ? p.done ? "\u05D4\u05D5\u05E9\u05DC\u05DE\u05D4" : "\u05DC\u05D1\u05D9\u05E6\u05D5\u05E2" : "")].filter(Boolean);
-  const price = item.kind === "booking" ? '<div class="record-price">' + (Number(p.cost) > 0 || ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(p.status) && p.cost !== void 0 ? escapeHtml(formatMoney(p.cost)) : "\u05D8\u05E8\u05DD \u05EA\u05D5\u05DE\u05D7\u05E8") + "</div>" : "";
-  const omitted = /* @__PURE__ */ new Set(["name", "place", "title", "type", "category", "status", "day", "kind", "notes"]);
-  if (item.kind === "booking") omitted.add("cost");
-  const meta = fields2.filter(([key]) => !omitted.has(key) && p[key] !== void 0 && p[key] !== "").map(([key, label]) => {
-    const value = ["url", "guide"].includes(key) ? externalLink(p[key], label) : escapeHtml(["paid", "cost"].includes(key) ? formatMoney(p[key]) : p[key]);
-    return value ? "<div><dt>" + escapeHtml(label) + "</dt><dd>" + value + "</dd></div>" : "";
-  }).join("");
-  const notes = p.notes ? String(p.notes) : "";
-  const noteMarkup = notes.length > 170 ? '<p class="record-excerpt">' + escapeHtml(notes.slice(0, 125)) + '\u2026</p><details class="card-notes"><summary><span>\u05E4\u05E8\u05D8\u05D9 \u05D4\u05EA\u05DB\u05E0\u05D5\u05DF</span>' + icon("chevron") + "</summary><p>" + escapeHtml(notes) + "</p></details>" : notes ? '<p class="record-notes">' + escapeHtml(notes) + "</p>" : "";
-  return '<article class="card record-card ' + (isTask && p.done ? "is-complete" : "") + '" data-id="' + escapeHtml(item.id) + '" aria-labelledby="record-' + escapeHtml(item.id) + '"><div class="record-badges">' + badges.map((x) => '<span class="badge">' + escapeHtml(x) + "</span>").join("") + '</div><h3 class="record-title" id="record-' + escapeHtml(item.id) + '">' + escapeHtml(title) + "</h3>" + price + (isTask ? '<label class="task-toggle"><input type="checkbox" aria-labelledby="record-' + escapeHtml(item.id) + " task-label-" + escapeHtml(item.id) + '" ' + (p.done ? "checked" : "") + '><span id="task-label-' + escapeHtml(item.id) + '">\u05D4\u05DE\u05E9\u05D9\u05DE\u05D4 \u05D4\u05D5\u05E9\u05DC\u05DE\u05D4</span></label>' : "") + (meta ? '<dl class="record-meta">' + meta + "</dl>" : "") + noteMarkup + '<div class="record-actions"><button type="button" data-action="edit">' + icon("edit") + '\u05E2\u05E8\u05D9\u05DB\u05D4</button><button type="button" data-action="delete" class="danger">' + icon("trash") + "\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></article>";
 }
 
 // src/app.js
@@ -30979,7 +31009,17 @@ function render() {
         focusView();
       });
       $("#add").onclick = () => edit("stop");
-      routeCleanup = mountRouteMap($("#route-map-panel"), items);
+      routeCleanup = mountRouteMap($("#route-map-panel"), items, (id) => {
+        routeView = "list";
+        render();
+        const card = [...$("#view").querySelectorAll("[data-id]")].find((x) => x.dataset.id === id);
+        const heading = card?.querySelector("h3");
+        if (heading) {
+          heading.tabIndex = -1;
+          heading.focus();
+          heading.scrollIntoView?.({ block: "start" });
+        }
+      });
       return;
     }
   }
@@ -30991,7 +31031,7 @@ function render() {
     categoryMenu = '<div class="row" role="group" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD" style="margin:12px 0">' + categoryOptions.map((name, index) => '<button type="button" data-place-category="' + index + '" aria-pressed="' + (placeCategory === name) + '" class="' + (placeCategory === name ? "active" : "") + '">' + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</button>").join("") + "</div>";
     if (placeCategory !== null) items = items.filter((x) => category(x) === placeCategory);
   }
-  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => recordCard(x, fields[tab])).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
+  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
   $("#view").querySelectorAll("[data-route-view]").forEach((b) => b.onclick = () => {
     routeView = b.dataset.routeView;
     render();
