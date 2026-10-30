@@ -20803,6 +20803,18 @@ function createAuth(client2, redirectTo) {
       const { error } = await client2.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: redirectTo } });
       if (error) throw Error(error.message);
     },
+    async signIn(email, password) {
+      const { error } = await client2.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw Error(error.message);
+    },
+    async changePassword(password) {
+      const { error } = await client2.auth.updateUser({ password });
+      if (error) throw Error(error.message);
+    },
+    async requestReset(email) {
+      const { error } = await client2.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+      if (error) throw Error(error.message);
+    },
     async session() {
       const { data, error } = await client2.auth.getSession();
       if (error) throw Error(error.message);
@@ -20813,8 +20825,8 @@ function createAuth(client2, redirectTo) {
       if (error) throw Error(error.message);
     },
     onChange(callback) {
-      return client2.auth.onAuthStateChange((_event, session2) => {
-        setTimeout(() => callback(session2), 0);
+      return client2.auth.onAuthStateChange((event, session2) => {
+        setTimeout(() => callback(session2, event), 0);
       }).data.subscription;
     }
   };
@@ -20991,29 +21003,78 @@ function wipe() {
   status("");
 }
 function login() {
-  $("#view").innerHTML = '<section class="login"><h2>\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D8\u05D9\u05D5\u05DC \u05D4\u05E4\u05E8\u05D8\u05D9 \u05E9\u05DC\u05DA</h2><p>\u05DC\u05D0\u05D7\u05E8 \u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05D4\u05DE\u05E1\u05DC\u05D5\u05DC \u05D5\u05D4\u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05D9\u05D9\u05D8\u05E2\u05E0\u05D5 \u05DE\u05D4\u05E2\u05E0\u05DF, \u05D2\u05DD \u05D1\u05D0\u05D9\u05D9\u05E4\u05D5\u05DF \u05D5\u05D2\u05DD \u05D1\u05DE\u05D7\u05E9\u05D1.</p><form id="login">' + field("email", "\u05DB\u05EA\u05D5\u05D1\u05EA \u05DE\u05D9\u05D9\u05DC", "", "email") + '<button type="submit">\u05E9\u05DC\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05DE\u05D9\u05D9\u05DC</button></form><p class="muted">\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DE\u05D9\u05D5\u05E2\u05D3\u05EA \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05D4\u05D5\u05D2\u05D3\u05E8 \u05DE\u05E8\u05D0\u05E9. \u05D0\u05D9\u05DF \u05E6\u05D5\u05E8\u05DA \u05D1\u05E1\u05D9\u05E1\u05DE\u05D4.</p></section>';
-  $("#login input").required = true;
+  $("#view").innerHTML = '<section class="login"><h2>\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D8\u05D9\u05D5\u05DC \u05D4\u05E4\u05E8\u05D8\u05D9 \u05E9\u05DC\u05DA</h2><p>\u05D4\u05DE\u05E1\u05DC\u05D5\u05DC \u05D5\u05D4\u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05E0\u05E9\u05DE\u05E8\u05D9\u05DD \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF.</p><form id="login">' + field("email", "\u05DB\u05EA\u05D5\u05D1\u05EA \u05DE\u05D9\u05D9\u05DC", "", "email") + field("password", "\u05E1\u05D9\u05E1\u05DE\u05D4", "", "password") + '<button type="submit">\u05DB\u05E0\u05D9\u05E1\u05D4 \u05E2\u05DD \u05E1\u05D9\u05E1\u05DE\u05D4</button><button type="button" id="resetpassword">\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 / \u05E9\u05DB\u05D7\u05EA\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button></form><p class="muted">\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DE\u05D9\u05D5\u05E2\u05D3\u05EA \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05D4\u05D5\u05D2\u05D3\u05E8 \u05DE\u05E8\u05D0\u05E9 \u05D1\u05DC\u05D1\u05D3. \u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05DE\u05D4 \u05E4\u05EA\u05D5\u05D7\u05D4. \u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 \u05D3\u05D5\u05E8\u05E9\u05EA \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DE\u05D0\u05D5\u05D1\u05D8\u05D7 \u05D1\u05DE\u05D9\u05D9\u05DC \u05D5\u05DB\u05E4\u05D5\u05E4\u05D4 \u05DC\u05DE\u05D2\u05D1\u05DC\u05EA \u05E9\u05DC\u05D9\u05D7\u05EA \u05D4\u05DE\u05D9\u05D9\u05DC\u05D9\u05DD.</p></section>';
+  $("#login input[name=email]").autocomplete = "username";
+  $("#login input[name=password]").autocomplete = "current-password";
+  $("#login").querySelectorAll("input").forEach((x) => x.required = true);
   $("#login").onsubmit = async (e) => {
     e.preventDefault();
-    const email = new FormData(e.target).get("email");
+    const form = e.target, email = form.elements.email.value, password = form.elements.password.value;
+    form.elements.password.value = "";
     lock(true);
-    status("\u05E9\u05D5\u05DC\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DB\u05E0\u05D9\u05E1\u05D4\u2026");
+    status("\u05DE\u05EA\u05D7\u05D1\u05E8\u2026");
     try {
-      await auth.requestLink(email);
-      status("\u05E7\u05D9\u05E9\u05D5\u05E8 \u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05E0\u05E9\u05DC\u05D7. \u05E4\u05EA\u05D7 \u05D0\u05D5\u05EA\u05D5 \u05D1\u05D0\u05D5\u05EA\u05D5 \u05D3\u05E4\u05D3\u05E4\u05DF \u05E9\u05D1\u05D5 \u05D1\u05E8\u05E6\u05D5\u05E0\u05DA \u05DC\u05D4\u05E9\u05EA\u05DE\u05E9 \u05D1\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D4.");
+      await auth.signIn(email, password);
+      status("\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05D4\u05E6\u05DC\u05D9\u05D7\u05D4");
     } catch (err) {
-      status("\u05E9\u05DC\u05D9\u05D7\u05EA \u05D4\u05E7\u05D9\u05E9\u05D5\u05E8 \u05E0\u05DB\u05E9\u05DC\u05D4: " + err.message);
+      status("\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05E0\u05DB\u05E9\u05DC\u05D4: " + err.message);
+    } finally {
+      lock(false);
+    }
+  };
+  $("#resetpassword").onclick = async () => {
+    const input = $("#login input[name=email]");
+    if (!input.reportValidity()) return;
+    lock(true);
+    try {
+      await auth.requestReset(input.value);
+      status("\u05D0\u05DD \u05D4\u05D7\u05E9\u05D1\u05D5\u05DF \u05E7\u05D9\u05D9\u05DD \u05D5\u05DE\u05D5\u05EA\u05E8 \u05DC\u05E9\u05DC\u05D5\u05D7 \u05D0\u05DC\u05D9\u05D5 \u05DE\u05D9\u05D9\u05DC, \u05D9\u05D9\u05E9\u05DC\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4. \u05E4\u05EA\u05D7 \u05E8\u05E7 \u05D0\u05EA \u05D4\u05D4\u05D5\u05D3\u05E2\u05D4 \u05D4\u05D7\u05D3\u05E9\u05D4 \u05D1\u05D9\u05D5\u05EA\u05E8.");
+    } catch (e) {
+      status("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E9\u05DC\u05D5\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4: " + e.message);
     } finally {
       lock(false);
     }
   };
 }
+function passwordEditor() {
+  viewEpoch++;
+  $("#editor").innerHTML = '<form id="passwordform"><h2>\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05D7\u05D3\u05E9\u05D4</h2>' + field("password", "\u05E1\u05D9\u05E1\u05DE\u05D4 \u05D7\u05D3\u05E9\u05D4", "", "password") + field("confirm", "\u05D0\u05D9\u05DE\u05D5\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4", "", "password") + '<button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05E1\u05D9\u05E1\u05DE\u05D4 \u05D7\u05D3\u05E9\u05D4</button><button type="button" id="cancelpassword">\u05D1\u05D9\u05D8\u05D5\u05DC</button><p id="passworderror" role="status"></p></form>';
+  const form = $("#passwordform");
+  form.querySelectorAll("input").forEach((x) => {
+    x.required = true;
+    x.minLength = 12;
+    x.autocomplete = "new-password";
+  });
+  $("#cancelpassword").onclick = () => $("#editor").close();
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    if (form.elements.password.value !== form.elements.confirm.value) {
+      $("#passworderror").textContent = "\u05D4\u05E1\u05D9\u05E1\u05DE\u05D0\u05D5\u05EA \u05D0\u05D9\u05E0\u05DF \u05D6\u05D4\u05D5\u05EA";
+      return;
+    }
+    const password = form.elements.password.value;
+    lock(true);
+    try {
+      await auth.changePassword(password);
+      form.reset();
+      $("#editor").close();
+      status("\u05D4\u05E1\u05D9\u05E1\u05DE\u05D4 \u05E2\u05D5\u05D3\u05DB\u05E0\u05D4");
+    } catch (err) {
+      form.reset();
+      $("#passworderror").textContent = "\u05D4\u05E2\u05D3\u05DB\u05D5\u05DF \u05E0\u05DB\u05E9\u05DC: " + err.message;
+    } finally {
+      lock(false);
+    }
+  };
+  $("#editor").showModal();
+}
 function account() {
-  $("#account").innerHTML = "<span>\u05DE\u05D7\u05D5\u05D1\u05E8: " + esc(session.user.email) + '</span><button id="refresh">\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><button id="signout">\u05D9\u05E6\u05D9\u05D0\u05D4</button>';
+  $("#account").innerHTML = "<span>\u05DE\u05D7\u05D5\u05D1\u05E8: " + esc(session.user.email) + '</span><button id="refresh">\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout">\u05D9\u05E6\u05D9\u05D0\u05D4</button>';
   $("#refresh").onclick = () => {
     if (tab === "settings" && !confirm("\u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05E9\u05DC\u05D0 \u05E0\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D8\u05D5\u05E4\u05E1 \u05D4\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
     load().catch(showLoadError);
   };
+  $("#changepassword").onclick = passwordEditor;
   $("#signout").onclick = async () => {
     lock(true);
     try {
@@ -21204,9 +21265,11 @@ async function applySession(next) {
     }
   }
 }
-auth.onChange((next) => {
+auth.onChange((next, event) => {
   authVersion++;
-  applySession(next).catch((e) => status(e.message));
+  applySession(next).then(() => {
+    if (event === "PASSWORD_RECOVERY" && session) passwordEditor();
+  }).catch((e) => status(e.message));
 });
 document.addEventListener("input", () => viewEpoch++);
 $("#editor").addEventListener("cancel", (e) => {
