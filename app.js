@@ -4833,7 +4833,7 @@ var require_leaflet_src = __commonJS({
           return Browser.retina && this.options[name + "RetinaUrl"] || this.options[name + "Url"];
         }
       });
-      function icon(options) {
+      function icon2(options) {
         return new Icon(options);
       }
       var IconDefault = Icon.extend({
@@ -4881,9 +4881,9 @@ var require_leaflet_src = __commonJS({
           this._marker = marker2;
         },
         addHooks: function() {
-          var icon2 = this._marker._icon;
+          var icon3 = this._marker._icon;
           if (!this._draggable) {
-            this._draggable = new Draggable(icon2, icon2, true);
+            this._draggable = new Draggable(icon3, icon3, true);
           }
           this._draggable.on({
             dragstart: this._onDragStart,
@@ -4891,7 +4891,7 @@ var require_leaflet_src = __commonJS({
             drag: this._onDrag,
             dragend: this._onDragEnd
           }, this).enable();
-          addClass(icon2, "leaflet-marker-draggable");
+          addClass(icon3, "leaflet-marker-draggable");
         },
         removeHooks: function() {
           this._draggable.off({
@@ -5077,8 +5077,8 @@ var require_leaflet_src = __commonJS({
         },
         // @method setIcon(icon: Icon): this
         // Changes the marker icon.
-        setIcon: function(icon2) {
-          this.options.icon = icon2;
+        setIcon: function(icon3) {
+          this.options.icon = icon3;
           if (this._map) {
             this._initIcon();
             this.update();
@@ -5100,25 +5100,25 @@ var require_leaflet_src = __commonJS({
         },
         _initIcon: function() {
           var options = this.options, classToAdd = "leaflet-zoom-" + (this._zoomAnimated ? "animated" : "hide");
-          var icon2 = options.icon.createIcon(this._icon), addIcon = false;
-          if (icon2 !== this._icon) {
+          var icon3 = options.icon.createIcon(this._icon), addIcon = false;
+          if (icon3 !== this._icon) {
             if (this._icon) {
               this._removeIcon();
             }
             addIcon = true;
             if (options.title) {
-              icon2.title = options.title;
+              icon3.title = options.title;
             }
-            if (icon2.tagName === "IMG") {
-              icon2.alt = options.alt || "";
+            if (icon3.tagName === "IMG") {
+              icon3.alt = options.alt || "";
             }
           }
-          addClass(icon2, classToAdd);
+          addClass(icon3, classToAdd);
           if (options.keyboard) {
-            icon2.tabIndex = "0";
-            icon2.setAttribute("role", "button");
+            icon3.tabIndex = "0";
+            icon3.setAttribute("role", "button");
           }
-          this._icon = icon2;
+          this._icon = icon3;
           if (options.riseOnHover) {
             this.on({
               mouseover: this._bringToFront,
@@ -5126,7 +5126,7 @@ var require_leaflet_src = __commonJS({
             });
           }
           if (this.options.autoPanOnFocus) {
-            on(icon2, "focus", this._panOnFocus, this);
+            on(icon3, "focus", this._panOnFocus, this);
           }
           var newShadow = options.icon.createShadow(this._shadow), addShadow = false;
           if (newShadow !== this._shadow) {
@@ -9543,7 +9543,7 @@ var require_leaflet_src = __commonJS({
       exports2.geoJSON = geoJSON;
       exports2.geoJson = geoJson;
       exports2.gridLayer = gridLayer;
-      exports2.icon = icon;
+      exports2.icon = icon2;
       exports2.imageOverlay = imageOverlay;
       exports2.latLng = toLatLng;
       exports2.latLngBounds = toLatLngBounds;
@@ -19418,12 +19418,12 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: `select`
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  async createSignedUrls(paths, expiresIn, options) {
+  async createSignedUrls(paths2, expiresIn, options) {
     var _this9 = this;
     return _this9.handleOperation(async () => {
       const data = await post(_this9.fetch, `${_this9.url}/object/sign/${_this9.bucketId}`, {
         expiresIn,
-        paths
+        paths: paths2
       }, { headers: _this9.headers });
       const query = new URLSearchParams();
       if (options === null || options === void 0 ? void 0 : options.download) query.set("download", options.download === true ? "" : options.download);
@@ -19698,10 +19698,10 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: `delete` and `select`
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  async remove(paths) {
+  async remove(paths2) {
     var _this12 = this;
     return _this12.handleOperation(async () => {
-      return await remove(_this12.fetch, `${_this12.url}/object/${_this12.bucketId}`, { prefixes: paths }, { headers: _this12.headers });
+      return await remove(_this12.fetch, `${_this12.url}/object/${_this12.bucketId}`, { prefixes: paths2 }, { headers: _this12.headers });
     });
   }
   /**
@@ -30701,11 +30701,11 @@ function mountRouteMap(root, items) {
   }).addTo(map);
   for (const group of groups) {
     const first = group.points[0], badge = element("span", String(first.day) + (group.points.length > 1 ? "+" : ""));
-    const icon = import_leaflet.default.divIcon({ className: "route-marker", html: badge, iconSize: [38, 38], iconAnchor: [19, 19] });
+    const icon2 = import_leaflet.default.divIcon({ className: "route-marker", html: badge, iconSize: [44, 44], iconAnchor: [22, 22] });
     const popup = element("div");
     popup.dir = "rtl";
     for (const point of group.points) popup.append(stopSummary(point));
-    import_leaflet.default.marker([group.lat, group.lng], { icon, title: group.points.map((x) => "\u05D9\u05D5\u05DD " + x.day + " \xB7 " + x.label).join(" / ") }).bindPopup(popup, { ...popupDimensions(map.getSize().x, map.getSize().y), className: "route-popup", autoPanPadding: [16, 16], keepInView: true }).addTo(map);
+    import_leaflet.default.marker([group.lat, group.lng], { icon: icon2, title: group.points.map((x) => "\u05D9\u05D5\u05DD " + x.day + " \xB7 " + x.label).join(" / ") }).bindPopup(popup, { ...popupDimensions(map.getSize().x, map.getSize().y), className: "route-popup", autoPanPadding: [16, 16], keepInView: true }).addTo(map);
   }
   map.fitBounds(groups.map((x) => [x.lat, x.lng]), { padding: [30, 30], maxZoom: 12 });
   const timer = setTimeout(() => map.invalidateSize(), 0), observer = typeof ResizeObserver === "function" ? new ResizeObserver(() => map.invalidateSize()) : null;
@@ -30715,6 +30715,42 @@ function mountRouteMap(root, items) {
     observer?.disconnect();
     map.remove();
   };
+}
+
+// src/ui-components.js
+var escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+var paths = { route: '<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a4 4 0 0 1 0 8H9a4 4 0 0 0-4 4"/>', booking: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h3"/>', place: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>', task: '<path d="m4 7 2 2 4-4m3 2h7M4 15l2 2 4-4m3 2h7"/>', gear: '<rect x="5" y="6" width="14" height="15" rx="3"/><path d="M9 6V4a3 3 0 0 1 6 0v2m-6 7h6m-6 4h6"/>', dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="18" width="7" height="3" rx="1"/>', settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>', more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>', edit: '<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 15Z"/>', trash: '<path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>', chevron: '<path d="m6 9 6 6 6-6"/>', refresh: '<path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 3M5 15a8 8 0 0 0 13 3"/>', shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/>' };
+function icon(name) {
+  return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (paths[name] ?? paths.route) + "</svg>";
+}
+var formatMoney = (value) => new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(value || 0));
+function navigationMarkup(tabs2, active) {
+  const primary = ["stop", "booking", "place", "task"], short = { stop: "\u05DE\u05E1\u05DC\u05D5\u05DC", booking: "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA", place: "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA", task: "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA" }, glyph = { stop: "route", booking: "booking", place: "place", task: "task", gear: "gear", dashboard: "dashboard", settings: "settings" };
+  const button = ([id, label], main = false) => '<button type="button" data-tab="' + id + '" class="nav-item ' + (active === id ? "active" : "") + '" ' + (active === id ? 'aria-current="page"' : "") + ">" + icon(glyph[id]) + "<span>" + escapeHtml(main ? short[id] : label) + "</span></button>";
+  const extra = tabs2.filter(([id]) => !primary.includes(id));
+  return primary.map((id) => button(tabs2.find((x) => x[0] === id), true)).join("") + '<details id="nav-more" class="nav-more ' + (!primary.includes(active) ? "active" : "") + '"><summary aria-label="\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05E0\u05D5\u05E1\u05E4\u05D5\u05EA">' + icon("more") + '<span>\u05E2\u05D5\u05D3</span></summary><div class="nav-menu">' + extra.map((x) => button(x)).join("") + "</div></details>";
+}
+function externalLink(url, label) {
+  try {
+    const u = new URL(url);
+    return ["https:", "http:"].includes(u.protocol) ? '<a class="record-link" href="' + escapeHtml(u.href) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(label) + " \u2197</a>" : "";
+  } catch {
+    return "";
+  }
+}
+function recordCard(item, fields2) {
+  const p = item.payload, title = p.name ?? p.place ?? p.title ?? "\u05E4\u05E8\u05D9\u05D8", isStop = item.kind === "stop", isTask = item.kind === "task";
+  const badges = [isStop ? "\u05D9\u05D5\u05DD " + p.day : p.type ?? p.category ?? "", isStop ? p.kind : "", p.status ?? (isTask ? p.done ? "\u05D4\u05D5\u05E9\u05DC\u05DE\u05D4" : "\u05DC\u05D1\u05D9\u05E6\u05D5\u05E2" : "")].filter(Boolean);
+  const price = item.kind === "booking" ? '<div class="record-price">' + (Number(p.cost) > 0 || ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(p.status) && p.cost !== void 0 ? escapeHtml(formatMoney(p.cost)) : "\u05D8\u05E8\u05DD \u05EA\u05D5\u05DE\u05D7\u05E8") + "</div>" : "";
+  const omitted = /* @__PURE__ */ new Set(["name", "place", "title", "type", "category", "status", "day", "kind", "notes"]);
+  if (item.kind === "booking") omitted.add("cost");
+  const meta = fields2.filter(([key]) => !omitted.has(key) && p[key] !== void 0 && p[key] !== "").map(([key, label]) => {
+    const value = ["url", "guide"].includes(key) ? externalLink(p[key], label) : escapeHtml(["paid", "cost"].includes(key) ? formatMoney(p[key]) : p[key]);
+    return value ? "<div><dt>" + escapeHtml(label) + "</dt><dd>" + value + "</dd></div>" : "";
+  }).join("");
+  const notes = p.notes ? String(p.notes) : "";
+  const noteMarkup = notes.length > 170 ? '<p class="record-excerpt">' + escapeHtml(notes.slice(0, 125)) + '\u2026</p><details class="card-notes"><summary><span>\u05E4\u05E8\u05D8\u05D9 \u05D4\u05EA\u05DB\u05E0\u05D5\u05DF</span>' + icon("chevron") + "</summary><p>" + escapeHtml(notes) + "</p></details>" : notes ? '<p class="record-notes">' + escapeHtml(notes) + "</p>" : "";
+  return '<article class="card record-card ' + (isTask && p.done ? "is-complete" : "") + '" data-id="' + escapeHtml(item.id) + '" aria-labelledby="record-' + escapeHtml(item.id) + '"><div class="record-badges">' + badges.map((x) => '<span class="badge">' + escapeHtml(x) + "</span>").join("") + '</div><h3 class="record-title" id="record-' + escapeHtml(item.id) + '">' + escapeHtml(title) + "</h3>" + price + (isTask ? '<label class="task-toggle"><input type="checkbox" aria-labelledby="record-' + escapeHtml(item.id) + " task-label-" + escapeHtml(item.id) + '" ' + (p.done ? "checked" : "") + '><span id="task-label-' + escapeHtml(item.id) + '">\u05D4\u05DE\u05E9\u05D9\u05DE\u05D4 \u05D4\u05D5\u05E9\u05DC\u05DE\u05D4</span></label>' : "") + (meta ? '<dl class="record-meta">' + meta + "</dl>" : "") + noteMarkup + '<div class="record-actions"><button type="button" data-action="edit">' + icon("edit") + '\u05E2\u05E8\u05D9\u05DB\u05D4</button><button type="button" data-action="delete" class="danger">' + icon("trash") + "\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></article>";
 }
 
 // src/app.js
@@ -30735,18 +30771,14 @@ var busy = false;
 var epoch = 0;
 var viewEpoch = 0;
 var authVersion = 0;
-var status = (s) => $("#message").textContent = s;
-var money = (n) => "\u20AA" + Number(n || 0).toLocaleString("he-IL");
-function field(k, label, value = "", type = "text") {
-  return "<label>" + esc(label) + (type === "textarea" ? '<textarea name="' + k + '">' + esc(value) + "</textarea>" : '<input name="' + k + '" type="' + type + '" value="' + esc(value) + '" ' + (["lat", "lng"].includes(k) ? 'inputmode="decimal" ' : "") + (type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>";
+function status(text) {
+  $("#message").textContent = text;
+  const feedback = $("#editor").querySelector("[data-dialog-status]");
+  if (feedback) feedback.textContent = text;
 }
-function safeLink(url) {
-  try {
-    const u = new URL(url);
-    return ["https:", "http:"].includes(u.protocol) ? '<a href="' + esc(u.href) + '" target="_blank" rel="noopener noreferrer">\u05E4\u05EA\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u2197</a>' : "";
-  } catch {
-    return "";
-  }
+var money = formatMoney;
+function field(k, label, value = "", type = "text") {
+  return "<label>" + esc(label) + (type === "textarea" ? '<textarea name="' + k + '">' + esc(value) + "</textarea>" : '<input autocomplete="off" name="' + k + '" type="' + type + '" value="' + esc(value) + '" ' + (["lat", "lng"].includes(k) ? 'inputmode="decimal" ' : "") + (type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>";
 }
 function lock(value) {
   busy = value;
@@ -30770,8 +30802,10 @@ function wipe() {
   status("");
 }
 function login() {
-  $("#view").innerHTML = '<section class="login"><h2>\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D8\u05D9\u05D5\u05DC \u05D4\u05E4\u05E8\u05D8\u05D9 \u05E9\u05DC\u05DA</h2><p>\u05D4\u05DE\u05E1\u05DC\u05D5\u05DC \u05D5\u05D4\u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05E0\u05E9\u05DE\u05E8\u05D9\u05DD \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF.</p><form id="login">' + field("email", "\u05DB\u05EA\u05D5\u05D1\u05EA \u05DE\u05D9\u05D9\u05DC", "", "email") + field("password", "\u05E1\u05D9\u05E1\u05DE\u05D4", "", "password") + '<button type="submit">\u05DB\u05E0\u05D9\u05E1\u05D4 \u05E2\u05DD \u05E1\u05D9\u05E1\u05DE\u05D4</button><button type="button" id="resetpassword">\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 / \u05E9\u05DB\u05D7\u05EA\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button></form><p class="muted">\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DE\u05D9\u05D5\u05E2\u05D3\u05EA \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05D4\u05D5\u05D2\u05D3\u05E8 \u05DE\u05E8\u05D0\u05E9 \u05D1\u05DC\u05D1\u05D3. \u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05DE\u05D4 \u05E4\u05EA\u05D5\u05D7\u05D4. \u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 \u05D3\u05D5\u05E8\u05E9\u05EA \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DE\u05D0\u05D5\u05D1\u05D8\u05D7 \u05D1\u05DE\u05D9\u05D9\u05DC \u05D5\u05DB\u05E4\u05D5\u05E4\u05D4 \u05DC\u05DE\u05D2\u05D1\u05DC\u05EA \u05E9\u05DC\u05D9\u05D7\u05EA \u05D4\u05DE\u05D9\u05D9\u05DC\u05D9\u05DD.</p></section>';
+  $("#view").innerHTML = '<section class="login"><div class="login-intro"><span class="login-symbol">' + icon("route") + '</span><h2>\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D8\u05D9\u05D5\u05DC \u05D4\u05E4\u05E8\u05D8\u05D9 \u05E9\u05DC\u05DA</h2><p>\u05DB\u05DC \u05D4\u05EA\u05DB\u05E0\u05D5\u05DF \u05E9\u05DC\u05DA \u05D1\u05DE\u05E7\u05D5\u05DD \u05D0\u05D7\u05D3, \u05DE\u05E1\u05D5\u05E0\u05DB\u05E8\u05DF \u05D1\u05D9\u05DF \u05D4\u05D0\u05D9\u05D9\u05E4\u05D5\u05DF \u05DC\u05DE\u05D7\u05E9\u05D1.</p></div><form id="login">' + field("email", "\u05DB\u05EA\u05D5\u05D1\u05EA \u05DE\u05D9\u05D9\u05DC", "", "email") + field("password", "\u05E1\u05D9\u05E1\u05DE\u05D4", "", "password") + '<button type="submit">\u05DB\u05E0\u05D9\u05E1\u05D4 \u05E2\u05DD \u05E1\u05D9\u05E1\u05DE\u05D4</button><button type="button" id="resetpassword">\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 / \u05E9\u05DB\u05D7\u05EA\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button></form><div class="login-privacy">' + icon("shield") + "<span>\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05D4\u05D5\u05D2\u05D3\u05E8 \u05DE\u05E8\u05D0\u05E9 \u05D1\u05DC\u05D1\u05D3. \u05DC\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 \u05D9\u05E9 \u05DC\u05E4\u05EA\u05D5\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DE\u05D0\u05D5\u05D1\u05D8\u05D7 \u05E9\u05E0\u05E9\u05DC\u05D7 \u05DC\u05DE\u05D9\u05D9\u05DC.</span></div></section>";
   $("#login input[name=email]").autocomplete = "username";
+  $("#login input[name=email]").spellcheck = false;
+  $("#login input[name=email]").setAttribute("autocapitalize", "none");
   $("#login input[name=password]").autocomplete = "current-password";
   $("#login").querySelectorAll("input").forEach((x) => x.required = true);
   $("#login").onsubmit = async (e) => {
@@ -30836,7 +30870,7 @@ function passwordEditor() {
   $("#editor").showModal();
 }
 function account() {
-  $("#account").innerHTML = "<span>\u05DE\u05D7\u05D5\u05D1\u05E8: " + esc(session.user.email) + '</span><button id="refresh">\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout">\u05D9\u05E6\u05D9\u05D0\u05D4</button>';
+  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + '</span><div><strong>\u05D4\u05D8\u05D9\u05D5\u05DC \u05E9\u05DC\u05D9</strong><small dir="auto">' + esc(session.user.email) + '</small></div></div><div class="account-tools"><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
   $("#refresh").onclick = () => {
     if (tab === "settings" && !confirm("\u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05E9\u05DC\u05D0 \u05E0\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D8\u05D5\u05E4\u05E1 \u05D4\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
     load().catch(showLoadError);
@@ -30905,19 +30939,27 @@ async function afterSave() {
     status("\u05D4\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05E2\u05E0\u05DF, \u05D0\u05DA \u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05E0\u05DB\u05E9\u05DC. \u05E0\u05E1\u05D4 \u05DC\u05E8\u05E2\u05E0\u05DF \u05E9\u05D5\u05D1.");
   }
 }
+function focusView() {
+  const heading = $("#view h2");
+  if (heading) {
+    heading.tabIndex = -1;
+    heading.focus();
+  }
+}
 function render() {
   routeCleanup?.();
   routeCleanup = null;
   if (!trip || !session) return;
   viewEpoch++;
-  $("#tabs").innerHTML = tabs.map(([k, t]) => '<button data-tab="' + k + '" class="' + (tab === k ? "active" : "") + '">' + t + "</button>").join("");
+  $("#tabs").innerHTML = navigationMarkup(tabs, tab);
   $("#tabs").querySelectorAll("button").forEach((b) => b.onclick = () => {
     tab = b.dataset.tab;
     render();
+    focusView();
   });
   if (tab === "dashboard") {
     const bookings = trip.items.filter((x) => x.kind === "booking").map((x) => x.payload), tasks = trip.items.filter((x) => x.kind === "task");
-    $("#view").innerHTML = '<div class="cards">' + [["\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D9\u05E2\u05D3", money(trip.settings.budget)], ["\u05E9\u05D5\u05DC\u05DD \u05D1\u05E4\u05D5\u05E2\u05DC", money(bookings.reduce((s, x) => s + Number(x.paid || 0), 0))], ["\u05D4\u05EA\u05D7\u05D9\u05D9\u05D1\u05D5\u05D9\u05D5\u05EA", money(bookings.filter((x) => ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(x.status)).reduce((s, x) => s + Number(x.cost || 0), 0))], ["\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05D1\u05D5\u05E6\u05E2\u05D5", tasks.filter((x) => x.payload.done).length + "/" + tasks.length]].map(([k, v]) => "<section><small>" + k + '</small><div class="metric">' + v + "</div></section>").join("") + "</div><section><h2>\u05EA\u05DE\u05D5\u05E0\u05EA \u05DE\u05E6\u05D1</h2><p>\u05DE\u05E9\u05DA \u05D4\u05D8\u05D9\u05D5\u05DC: " + esc(trip.settings.days) + " \u05D9\u05DE\u05D9\u05DD | \u05D9\u05E6\u05D9\u05D0\u05D4: " + esc(trip.settings.start || "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + "</p><p>\u05D4\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05E0\u05D8\u05E2\u05E0\u05D9\u05DD \u05DE\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05D7\u05D6\u05D5\u05E8 \u05DC\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D4 \u05D0\u05D5 \u05DC\u05D7\u05E5 \u05E2\u05DC \u05E8\u05E2\u05E0\u05DF \u05DB\u05D3\u05D9 \u05DC\u05E7\u05D1\u05DC \u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05DE\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D0\u05D7\u05E8.</p></section>";
+    $("#view").innerHTML = '<div class="cards">' + [["\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D9\u05E2\u05D3", trip.settings.budget ? money(trip.settings.budget) : "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2"], ["\u05E9\u05D5\u05DC\u05DD \u05D1\u05E4\u05D5\u05E2\u05DC", money(bookings.reduce((s, x) => s + Number(x.paid || 0), 0))], ["\u05D4\u05EA\u05D7\u05D9\u05D9\u05D1\u05D5\u05D9\u05D5\u05EA", money(bookings.filter((x) => ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(x.status)).reduce((s, x) => s + Number(x.cost || 0), 0))], ["\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05D1\u05D5\u05E6\u05E2\u05D5", tasks.filter((x) => x.payload.done).length + "/" + tasks.length]].map(([k, v]) => "<section><small>" + k + '</small><div class="metric">' + v + "</div></section>").join("") + "</div><section><h2>\u05EA\u05DE\u05D5\u05E0\u05EA \u05DE\u05E6\u05D1</h2><p>\u05DE\u05E9\u05DA \u05D4\u05D8\u05D9\u05D5\u05DC: " + esc(trip.settings.days) + " \u05D9\u05DE\u05D9\u05DD | \u05D9\u05E6\u05D9\u05D0\u05D4: " + esc(trip.settings.start || "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + "</p><p>\u05D4\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05E0\u05D8\u05E2\u05E0\u05D9\u05DD \u05DE\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05D7\u05D6\u05D5\u05E8 \u05DC\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D4 \u05D0\u05D5 \u05DC\u05D7\u05E5 \u05E2\u05DC \u05E8\u05E2\u05E0\u05DF \u05DB\u05D3\u05D9 \u05DC\u05E7\u05D1\u05DC \u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05DE\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D0\u05D7\u05E8.</p></section>";
     return;
   }
   if (tab === "settings") {
@@ -30934,6 +30976,7 @@ function render() {
       $("#view").querySelectorAll("[data-route-view]").forEach((b) => b.onclick = () => {
         routeView = b.dataset.routeView;
         render();
+        focusView();
       });
       $("#add").onclick = () => edit("stop");
       routeCleanup = mountRouteMap($("#route-map-panel"), items);
@@ -30948,14 +30991,16 @@ function render() {
     categoryMenu = '<div class="row" role="group" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD" style="margin:12px 0">' + categoryOptions.map((name, index) => '<button type="button" data-place-category="' + index + '" aria-pressed="' + (placeCategory === name) + '" class="' + (placeCategory === name ? "active" : "") + '">' + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</button>").join("") + "</div>";
     if (placeCategory !== null) items = items.filter((x) => category(x) === placeCategory);
   }
-  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => '<div class="card" data-id="' + esc(x.id) + '">' + (tab === "task" ? '<label><input type="checkbox" aria-label="\u05E1\u05D9\u05DE\u05D5\u05DF \u05DE\u05E9\u05D9\u05DE\u05D4" ' + (x.payload.done ? "checked" : "") + "> \u05D1\u05D5\u05E6\u05E2</label>" : "") + fields[tab].map(([k, label]) => x.payload[k] !== "" && x.payload[k] !== void 0 ? "<p><small>" + esc(label) + ":</small> " + (["url", "guide"].includes(k) ? safeLink(x.payload[k]) : esc(x.payload[k])) + "</p>" : "").join("") + '<div class="row"><button data-action="edit">\u05E2\u05E8\u05D9\u05DB\u05D4</button><button data-action="delete" class="danger">\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></div>').join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
+  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => recordCard(x, fields[tab])).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
   $("#view").querySelectorAll("[data-route-view]").forEach((b) => b.onclick = () => {
     routeView = b.dataset.routeView;
     render();
+    focusView();
   });
   $("#view").querySelectorAll("[data-place-category]").forEach((b) => b.onclick = () => {
     placeCategory = categoryOptions[Number(b.dataset.placeCategory)];
     render();
+    $("#view [data-place-category][aria-pressed=true]")?.focus();
   });
   $("#add").onclick = () => edit(tab);
   $("#view").querySelectorAll("[data-id]").forEach((card) => {
@@ -30976,7 +31021,7 @@ function render() {
 function edit(kind, existing) {
   viewEpoch++;
   const item = existing ? structuredClone(existing) : { id: crypto.randomUUID(), kind, payload: kind === "place" && placeCategory !== null ? { type: placeCategory === "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4" ? "" : placeCategory } : {} };
-  $("#editor").innerHTML = "<form><h2>" + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05E4\u05E8\u05D9\u05D8" : "\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D9\u05D8") + "</h2>" + fields[kind].map(([k, t, type]) => field(k, t, item.payload[k] ?? (type === "number" ? k === "day" ? 1 : 0 : ""), type)).join("") + '<div class="row"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D1\u05E2\u05E0\u05DF</button><button type="button" id="cancel">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p>\u05D1\u05DE\u05E7\u05E8\u05D4 \u05E9\u05D2\u05D9\u05D0\u05D4 \u05D4\u05D8\u05D5\u05E4\u05E1 \u05D9\u05D9\u05E9\u05D0\u05E8 \u05E4\u05EA\u05D5\u05D7. \u05E0\u05D9\u05EA\u05DF \u05DC\u05D4\u05E2\u05EA\u05D9\u05E7 \u05D0\u05EA \u05D4\u05E2\u05E8\u05DB\u05D9\u05DD \u05DC\u05E4\u05E0\u05D9 \u05E8\u05E2\u05E0\u05D5\u05DF.</p></form>';
+  $("#editor").innerHTML = "<form><h2>" + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05E4\u05E8\u05D9\u05D8" : "\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D9\u05D8") + "</h2>" + fields[kind].map(([k, t, type]) => field(k, t, item.payload[k] ?? (type === "number" ? k === "day" ? 1 : 0 : ""), type)).join("") + '<div class="row form-actions"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D1\u05E2\u05E0\u05DF</button><button type="button" id="cancel">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p><p class="form-hint">\u05D4\u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D9\u05D9\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF.</p></form>';
   $("#cancel").onclick = () => $("#editor").close();
   $("#editor form").onsubmit = async (e) => {
     e.preventDefault();
@@ -31085,6 +31130,13 @@ auth.session().then((next) => {
   login();
   status("\u05D1\u05D3\u05D9\u05E7\u05EA \u05D4\u05D4\u05EA\u05D7\u05D1\u05E8\u05D5\u05EA \u05E0\u05DB\u05E9\u05DC\u05D4: " + e.message);
 });
+if (typeof ResizeObserver === "function") {
+  const navigationObserver = new ResizeObserver((entries) => {
+    const height = entries[0]?.borderBoxSize?.[0]?.blockSize ?? $("#tabs").getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--navigation-space", Math.ceil(height) + 28 + "px");
+  });
+  navigationObserver.observe($("#tabs"));
+}
 /*! Bundled license information:
 
 leaflet/dist/leaflet-src.js:

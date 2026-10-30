@@ -9,3 +9,5 @@ The full unbundled source is in cloud-source.zip. Unzip it, run npm ci, npm test
 The database schema and access isolation tests are in supabase/. Cloud writes require successful server acknowledgment. Settings offers JSON backup export and previewed additive import. Offline writing is not supported.
 
 Route opens with an interactive OpenStreetMap map and a daily-plan sub-menu. Each marker offers Google Maps and Waze links. General destination markers are explicitly approximate; optional stop latitude/longitude fields provide exact pins and survive backups. Tile imagery requires an Internet connection; navigation links remain available in the point list. Leaflet license is in THIRD_PARTY_NOTICES.txt.
+
+The mobile interface uses four primary tabs and a More menu for overview, equipment, and settings. Account details contain password and sign-out controls. Record notes expand in place; failed saves retain the editor draft. The design system is documented in design-system/thailand-moto-trip-studio/MASTER.md.
