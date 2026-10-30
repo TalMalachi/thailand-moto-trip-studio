@@ -30885,7 +30885,7 @@ var busy = false;
 var epoch = 0;
 var viewEpoch = 0;
 var authVersion = 0;
-var workViews = { booking: "current", task: "current" };
+var workViews = { booking: "stats", task: "stats" };
 var statusFilters = { booking: "", task: "" };
 mountHeaderPanel(document, window, () => Boolean(session && trip));
 function status(text) {
@@ -30910,7 +30910,7 @@ function wipe() {
   viewEpoch++;
   session = null;
   trip = null;
-  workViews = { booking: "current", task: "current" };
+  workViews = { booking: "stats", task: "stats" };
   statusFilters = { booking: "", task: "" };
   categories = { place: null, booking: null, task: null };
   busy = false;
