@@ -30571,7 +30571,7 @@ function previewImport(existing, incoming) {
   return { add: incoming.filter((x) => !ids.has(JSON.stringify([x.kind, x.legacy_id]))), skip: incoming.filter((x) => ids.has(JSON.stringify([x.kind, x.legacy_id]))) };
 }
 function exportTrip(trip2) {
-  return JSON.stringify({ schemaVersion: 2, exportedAt: (/* @__PURE__ */ new Date()).toISOString(), data: { settings: trip2.settings, items: trip2.items.map((x) => ({ id: x.id, legacy_id: x.legacy_id ?? x.id, kind: x.kind, payload: x.payload })) } }, null, 2);
+  return JSON.stringify({ schemaVersion: 2, exportedAt: (/* @__PURE__ */ new Date()).toISOString(), data: { destination: { name: trip2.destination_name || trip2.title || "", isActive: trip2.is_active !== false }, settings: trip2.settings, items: trip2.items.map((x) => ({ id: x.id, legacy_id: x.legacy_id ?? x.id, kind: x.kind, payload: x.payload })) } }, null, 2);
 }
 
 // src/trip-repository.js
@@ -30586,9 +30586,23 @@ function changed(result) {
 }
 function createRepository(client2) {
   return {
-    async getTrip() {
-      const trips = checked(await client2.from("trips").select("*").order("created_at").limit(2));
-      if (trips.length !== 1) throw Error(trips.length ? "\u05D9\u05D5\u05EA\u05E8 \u05DE\u05D8\u05D9\u05D5\u05DC \u05D0\u05D7\u05D3 \u05DE\u05E9\u05D5\u05D9\u05DA \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF" : "\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF \u05D8\u05E8\u05DD \u05E9\u05D5\u05D9\u05DA \u05DC\u05D8\u05D9\u05D5\u05DC.");
+    async listDestinations() {
+      return checked(await client2.from("trips").select("*").order("created_at").limit(500));
+    },
+    async createDestination(ownerId, name, active) {
+      name = String(name).trim();
+      if (!name || name.length > 100) throw Error("\u05E9\u05DD \u05D9\u05E2\u05D3 \u05E0\u05D3\u05E8\u05E9 \u05D5\u05E2\u05D3 100 \u05EA\u05D5\u05D5\u05D9\u05DD");
+      return changed(await client2.from("trips").insert({ id: crypto.randomUUID(), owner_id: ownerId, title: name, destination_name: name, is_active: active, settings: { start: "", days: 21, budget: 0, currency: "ILS" } }).select());
+    },
+    async updateDestination(id, version5, name, active) {
+      name = String(name).trim();
+      if (!name || name.length > 100) throw Error("\u05E9\u05DD \u05D9\u05E2\u05D3 \u05E0\u05D3\u05E8\u05E9 \u05D5\u05E2\u05D3 100 \u05EA\u05D5\u05D5\u05D9\u05DD");
+      return changed(await client2.rpc("update_trip_destination", { p_id: id, p_expected_version: version5, p_destination_name: name, p_is_active: active }));
+    },
+    async getTrip(id) {
+      if (!id) throw Error("\u05D9\u05E9 \u05DC\u05D1\u05D7\u05D5\u05E8 \u05D9\u05E2\u05D3");
+      const trips = checked(await client2.from("trips").select("*").eq("id", id).order("created_at").limit(2));
+      if (trips.length !== 1) throw Error(trips.length ? "\u05D9\u05D5\u05EA\u05E8 \u05DE\u05D9\u05E2\u05D3 \u05D0\u05D7\u05D3 \u05EA\u05D5\u05D0\u05DD \u05DC\u05D1\u05D7\u05D9\u05E8\u05D4" : "\u05D4\u05D9\u05E2\u05D3 \u05DC\u05D0 \u05E0\u05DE\u05E6\u05D0 \u05D0\u05D5 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05E9\u05D5\u05D9\u05DA \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF.");
       const trip2 = trips[0], items = [];
       for (let offset = 0; ; offset += 1e3) {
         const page = checked(await client2.from("trip_items").select("*").eq("trip_id", trip2.id).order("id").range(offset, offset + 999));
@@ -30625,14 +30639,15 @@ function createRepository(client2) {
 }
 
 // src/route-points.js
-function dailyDestination(payload) {
+var countryName = (name) => ({ "\u05EA\u05D0\u05D9\u05DC\u05E0\u05D3": "Thailand", "\u05D5\u05D9\u05D9\u05D8\u05E0\u05D0\u05DD": "Vietnam", "\u05D5\u05D9\u05D0\u05D8\u05E0\u05DD": "Vietnam", "\u05D5\u05D9\u05D9\u05D8\u05E0\u05DD": "Vietnam" })[name] || name || "Thailand";
+function dailyDestination(payload, destination = "Thailand") {
   let query = "";
   try {
     const u = new URL(payload.url);
     if (["www.google.com", "maps.google.com", "google.com"].includes(u.hostname) && u.pathname.startsWith("/maps")) query = u.searchParams.get("query") || u.searchParams.get("destination") || u.searchParams.get("q") || "";
   } catch {
   }
-  return { label: payload.place, query: query || payload.place + " Thailand" };
+  return { label: payload.place, query: query || payload.place + " " + countryName(destination) };
 }
 var areas = [
   { aliases: ["\u05E6\u05F3\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "\u05E6\u2019\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "\u05E6\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "chiang mai"], lat: 18.7883, lng: 98.9853, query: "Chiang Mai, Thailand" },
@@ -30653,7 +30668,7 @@ function pair(lat, lng) {
   lng = Number(lng);
   return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
 }
-function position(payload) {
+function position(payload, destination = "Thailand") {
   const explicit = pair(payload.lat, payload.lng);
   if (explicit) return { ...explicit, precision: "exact" };
   try {
@@ -30665,13 +30680,14 @@ function position(payload) {
     }
   } catch {
   }
+  if (countryName(destination) !== "Thailand") return null;
   const name = String(payload.place ?? "").toLowerCase(), area = areas.find((x) => x.aliases.some((alias) => name.includes(alias)));
   return area ? { lat: area.lat, lng: area.lng, query: area.query, precision: "area" } : null;
 }
-function routePoints(items) {
+function routePoints(items, destination = "Thailand") {
   return items.filter((x) => x.kind === "stop").map((x) => {
-    const p = position(x.payload);
-    return p ? { ...p, id: x.id, day: x.payload.day, label: x.payload.place, kind: x.payload.kind, destination: dailyDestination(x.payload) } : null;
+    const p = position(x.payload, destination);
+    return p ? { ...p, id: x.id, day: x.payload.day, label: x.payload.place, kind: x.payload.kind, destination: dailyDestination(x.payload, destination) } : null;
   }).filter(Boolean).sort((a, b) => a.day - b.day);
 }
 function groupRoutePoints(points) {
@@ -30684,7 +30700,7 @@ function groupRoutePoints(points) {
   return [...groups.values()];
 }
 function navigationLinks(point) {
-  const exact = point.precision === "exact" && pair(point.lat, point.lng), target = exact ? point.lat + "," + point.lng : point.destination?.query || point.query || point.label + " Thailand";
+  const exact = point.precision === "exact" && pair(point.lat, point.lng), target = exact ? point.lat + "," + point.lng : point.destination?.query || point.query || point.label;
   const google = new URL("https://www.google.com/maps/dir/");
   google.searchParams.set("api", "1");
   google.searchParams.set("destination", target);
@@ -30734,15 +30750,15 @@ function recordCard(item, fields2, extra = "") {
 }
 
 // src/daily-navigation.js
-function lodgingForDay(stop, items) {
+function lodgingForDay(stop, items, destination = "Thailand") {
   const match = String(stop.payload.notes || "").match(/(?:^|\n)לינה:\s*([^\n.]+)(?:\.|$)/);
   if (!match || /^ללא\b|^ללא\s/.test(match[1].trim())) return null;
   const label = match[1].trim(), name = label.split(/\s+[–—]\s+/)[0].trim();
   const booking = items.find((x) => x.kind === "booking" && x.payload.type === "\u05DE\u05DC\u05D5\u05DF" && (x.payload.supplier === name || x.payload.name?.startsWith(name + " \u2013")));
-  return { label, query: name + " " + (booking?.payload.name?.split(/\s+[–—]\s+/).slice(1).join(" ") || stop.payload.place) + " Thailand", status: booking?.payload.status || "\u05DC\u05D1\u05D3\u05D9\u05E7\u05D4" };
+  return { label, query: name + " " + (booking?.payload.name?.split(/\s+[–—]\s+/).slice(1).join(" ") || stop.payload.place) + " " + countryName(destination), status: booking?.payload.status || "\u05DC\u05D1\u05D3\u05D9\u05E7\u05D4" };
 }
-function lodgingMarkup(stop, items) {
-  const lodging = lodgingForDay(stop, items);
+function lodgingMarkup(stop, items, destination = "Thailand") {
+  const lodging = lodgingForDay(stop, items, destination);
   if (!lodging) return "";
   const links = navigationLinks({ ...lodging, precision: "unknown" });
   return '<div class="daily-lodging"><h4>\u05DC\u05D9\u05E0\u05D4 \u05D1\u05E1\u05D9\u05D5\u05DD \u05D4\u05D9\u05D5\u05DD</h4><p>' + escapeHtml(lodging.label) + ' <span class="badge">' + escapeHtml(lodging.status) + '</span></p><div class="row">' + [["google", "Google Maps"], ["waze", "Waze"]].map(([key, name]) => '<a class="btn" data-lodging-navigation="' + key + '" href="' + escapeHtml(links[key]) + '" target="_blank" rel="noopener noreferrer">\u05E0\u05D9\u05D5\u05D5\u05D8 \u05DC\u05DC\u05D9\u05E0\u05D4 \u05D1\u05BE' + name + "</a>").join("") + "</div><small>\u05D7\u05D9\u05E4\u05D5\u05E9 \u05DE\u05E7\u05D5\u05DD \u05D4\u05DC\u05D9\u05E0\u05D4 \u05D4\u05E8\u05E9\u05D5\u05DD \u05D1\u05EA\u05DB\u05E0\u05D5\u05DF; \u05D9\u05E9 \u05DC\u05D0\u05DE\u05EA \u05D0\u05EA \u05D4\u05E0\u05DB\u05E1 \u05D5\u05D4\u05DB\u05EA\u05D5\u05D1\u05EA \u05DC\u05E4\u05E0\u05D9 \u05D9\u05E6\u05D9\u05D0\u05D4.</small></div>";
@@ -30790,8 +30806,8 @@ function stopSummary(point, onOpenDay) {
   node.append(open);
   return node;
 }
-function mountRouteMap(root, items, onOpenDay) {
-  const stops = items.filter((x) => x.kind === "stop").sort((a, b) => a.payload.day - b.payload.day), points = routePoints(stops), groups = groupRoutePoints(points), mapped = new Set(points.map((x) => x.id));
+function mountRouteMap(root, items, onOpenDay, destination = "Thailand") {
+  const stops = items.filter((x) => x.kind === "stop").sort((a, b) => a.payload.day - b.payload.day), points = routePoints(stops, destination), groups = groupRoutePoints(points), mapped = new Set(points.map((x) => x.id));
   const summary = element("p", groups.length + " \u05E0\u05E7\u05D5\u05D3\u05D5\u05EA \u05E2\u05DC \u05D4\u05DE\u05E4\u05D4 \xB7 " + points.length + " \u05E2\u05E6\u05D9\u05E8\u05D5\u05EA \u05DE\u05DE\u05D5\u05E7\u05DE\u05D5\u05EA \u05DE\u05EA\u05D5\u05DA " + stops.length);
   root.append(summary);
   const container = element("div");
@@ -30807,12 +30823,12 @@ function mountRouteMap(root, items, onOpenDay) {
     missing.id = "unmapped-stops";
     missing.append(element("h3", "\u05E2\u05E6\u05D9\u05E8\u05D5\u05EA \u05DC\u05DC\u05D0 \u05DE\u05D9\u05E7\u05D5\u05DD \u05D1\u05DE\u05E4\u05D4"));
     missing.append(element("p", "\u05D0\u05E4\u05E9\u05E8 \u05DC\u05D4\u05D5\u05E1\u05D9\u05E3 \u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 \u05D5\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA \u05D1\u05E2\u05E8\u05D9\u05DB\u05EA \u05D4\u05E2\u05E6\u05D9\u05E8\u05D4 \u05D1\u05EA\u05D5\u05DB\u05E0\u05D9\u05EA \u05D4\u05D9\u05D5\u05DE\u05D9\u05EA."));
-    for (const item of unmapped) missing.append(stopSummary({ id: item.id, day: item.payload.day, label: item.payload.place, destination: dailyDestination(item.payload), precision: "unknown" }, onOpenDay));
+    for (const item of unmapped) missing.append(stopSummary({ id: item.id, day: item.payload.day, label: item.payload.place, destination: dailyDestination(item.payload, destination), precision: "unknown" }, onOpenDay));
     root.append(missing);
   }
   const list = element("details");
   list.append(element("summary", "\u05DB\u05DC \u05E0\u05E7\u05D5\u05D3\u05D5\u05EA \u05D4\u05DE\u05E1\u05DC\u05D5\u05DC (" + stops.length + ")"));
-  for (const item of stops) list.append(stopSummary(points.find((x) => x.id === item.id) ?? { day: item.payload.day, label: item.payload.place, destination: dailyDestination(item.payload), precision: "unknown" }, onOpenDay));
+  for (const item of stops) list.append(stopSummary(points.find((x) => x.id === item.id) ?? { day: item.payload.day, label: item.payload.place, destination: dailyDestination(item.payload, destination), precision: "unknown" }, onOpenDay));
   root.append(list);
   root.append(element("p", "\u05D1\u05E0\u05E7\u05D5\u05D3\u05D5\u05EA \u05E9\u05DC \u05E9\u05D9\u05D8 \u05D0\u05D5 \u05D8\u05D9\u05E1\u05D4 \u05D9\u05E9 \u05DC\u05D1\u05D7\u05D5\u05E8 \u05D0\u05EA \u05D4\u05E8\u05E6\u05D9\u05E3 \u05D0\u05D5 \u05E9\u05D3\u05D4 \u05D4\u05EA\u05E2\u05D5\u05E4\u05D4 \u05D4\u05E8\u05DC\u05D5\u05D5\u05E0\u05D8\u05D9.", "muted"));
   if (!groups.length) {
@@ -30869,7 +30885,7 @@ function mountRouteMap(root, items, onOpenDay) {
 
 // src/app.js
 var client = createClient(cloudConfig.url, cloudConfig.publishableKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "thailand-cloud-auth" } });
-var auth = createAuth(client, "https://talmalachi.github.io/thailand-moto-trip-studio/");
+var auth = createAuth(client, new URL("./", window.location.href).href);
 var repo = createRepository(client);
 var $ = (s) => document.querySelector(s);
 var esc2 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -30885,6 +30901,8 @@ var busy = false;
 var epoch = 0;
 var viewEpoch = 0;
 var authVersion = 0;
+var selectedTripId = null;
+var destinations = [];
 var workViews = { booking: "stats", task: "stats" };
 var statusFilters = { booking: "", task: "" };
 mountHeaderPanel(document, window, () => Boolean(session && trip));
@@ -30910,6 +30928,8 @@ function wipe() {
   viewEpoch++;
   session = null;
   trip = null;
+  selectedTripId = null;
+  destinations = [];
   workViews = { booking: "stats", task: "stats" };
   statusFilters = { booking: "", task: "" };
   categories = { place: null, booking: null, task: null };
@@ -30922,7 +30942,7 @@ function wipe() {
   status("");
 }
 function login() {
-  $("#view").innerHTML = '<section class="login"><div class="login-intro"><span class="login-symbol">' + icon("route") + '</span><h2>\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D8\u05D9\u05D5\u05DC \u05D4\u05E4\u05E8\u05D8\u05D9 \u05E9\u05DC\u05DA</h2><p>\u05DB\u05DC \u05D4\u05EA\u05DB\u05E0\u05D5\u05DF \u05E9\u05DC\u05DA \u05D1\u05DE\u05E7\u05D5\u05DD \u05D0\u05D7\u05D3, \u05DE\u05E1\u05D5\u05E0\u05DB\u05E8\u05DF \u05D1\u05D9\u05DF \u05D4\u05D0\u05D9\u05D9\u05E4\u05D5\u05DF \u05DC\u05DE\u05D7\u05E9\u05D1.</p></div><form id="login">' + field("email", "\u05DB\u05EA\u05D5\u05D1\u05EA \u05DE\u05D9\u05D9\u05DC", "", "email") + field("password", "\u05E1\u05D9\u05E1\u05DE\u05D4", "", "password") + '<button type="submit">\u05DB\u05E0\u05D9\u05E1\u05D4 \u05E2\u05DD \u05E1\u05D9\u05E1\u05DE\u05D4</button><button type="button" id="resetpassword">\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 / \u05E9\u05DB\u05D7\u05EA\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button></form><div class="login-privacy">' + icon("shield") + "<span>\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05D4\u05D5\u05D2\u05D3\u05E8 \u05DE\u05E8\u05D0\u05E9 \u05D1\u05DC\u05D1\u05D3. \u05DC\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 \u05D9\u05E9 \u05DC\u05E4\u05EA\u05D5\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DE\u05D0\u05D5\u05D1\u05D8\u05D7 \u05E9\u05E0\u05E9\u05DC\u05D7 \u05DC\u05DE\u05D9\u05D9\u05DC.</span></div></section>";
+  $("#view").innerHTML = '<section class="login"><div class="login-intro"><span class="login-symbol">' + icon("route") + '</span><h2>\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05BEMotor Trip Studio</h2><p>\u05DB\u05DC \u05D4\u05D9\u05E2\u05D3\u05D9\u05DD \u05D5\u05D4\u05D8\u05D9\u05D5\u05DC\u05D9\u05DD \u05E9\u05DC\u05DA \u05D1\u05DE\u05E7\u05D5\u05DD \u05D0\u05D7\u05D3, \u05DE\u05E1\u05D5\u05E0\u05DB\u05E8\u05E0\u05D9\u05DD \u05D1\u05D9\u05DF \u05D4\u05D0\u05D9\u05D9\u05E4\u05D5\u05DF \u05DC\u05DE\u05D7\u05E9\u05D1.</p></div><form id="login">' + field("email", "\u05DB\u05EA\u05D5\u05D1\u05EA \u05DE\u05D9\u05D9\u05DC", "", "email") + field("password", "\u05E1\u05D9\u05E1\u05DE\u05D4", "", "password") + '<button type="submit">\u05DB\u05E0\u05D9\u05E1\u05D4 \u05E2\u05DD \u05E1\u05D9\u05E1\u05DE\u05D4</button><button type="button" id="resetpassword">\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 / \u05E9\u05DB\u05D7\u05EA\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button></form><div class="login-privacy">' + icon("shield") + "<span>\u05D4\u05DB\u05E0\u05D9\u05E1\u05D4 \u05DC\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05D4\u05D5\u05D2\u05D3\u05E8 \u05DE\u05E8\u05D0\u05E9 \u05D1\u05DC\u05D1\u05D3. \u05DC\u05D4\u05D2\u05D3\u05E8\u05EA \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4 \u05D9\u05E9 \u05DC\u05E4\u05EA\u05D5\u05D7 \u05E7\u05D9\u05E9\u05D5\u05E8 \u05DE\u05D0\u05D5\u05D1\u05D8\u05D7 \u05E9\u05E0\u05E9\u05DC\u05D7 \u05DC\u05DE\u05D9\u05D9\u05DC.</span></div></section>";
   $("#login input[name=email]").autocomplete = "username";
   $("#login input[name=email]").spellcheck = false;
   $("#login input[name=email]").setAttribute("autocapitalize", "none");
@@ -30990,7 +31010,18 @@ function passwordEditor() {
   $("#editor").showModal();
 }
 function account() {
-  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + '</span><div><strong>\u05D4\u05D8\u05D9\u05D5\u05DC \u05E9\u05DC\u05D9</strong><small dir="auto">' + esc2(session.user.email) + '</small></div></div><div class="account-tools"><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
+  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + "</span><div><strong>" + esc2(trip?.destination_name || "Motor Trip Studio") + '</strong><small dir="auto">' + esc2(session.user.email) + '</small></div></div><div class="account-tools"><button id="destinations-home">\u05D9\u05E2\u05D3\u05D9\u05DD</button><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
+  $("#destinations-home").onclick = () => {
+    if (busy) return;
+    $("#editor").close();
+    routeCleanup?.();
+    routeCleanup = null;
+    selectedTripId = null;
+    trip = null;
+    epoch++;
+    viewEpoch++;
+    load().catch(showLoadError);
+  };
   $("#refresh").onclick = () => {
     if (tab === "settings" && !confirm("\u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05E9\u05DC\u05D0 \u05E0\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D8\u05D5\u05E4\u05E1 \u05D4\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
     load().catch(showLoadError);
@@ -31024,10 +31055,20 @@ async function load() {
   const current = () => run === epoch && view === viewEpoch && session?.user.id === user;
   status("\u05D8\u05D5\u05E2\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF\u2026");
   try {
-    const loaded = await repo.getTrip();
-    if (!current()) return;
-    trip = loaded;
-    render();
+    if (!selectedTripId) {
+      const rows = await repo.listDestinations();
+      if (!current()) return;
+      destinations = rows;
+      trip = null;
+      destinationHome();
+      account();
+    } else {
+      const loaded = await repo.getTrip(selectedTripId);
+      if (!current()) return;
+      trip = loaded;
+      render();
+      account();
+    }
     status("\u05E0\u05D8\u05E2\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF \u2022 " + (/* @__PURE__ */ new Date()).toLocaleTimeString("he-IL"));
   } catch (e) {
     if (current()) throw e;
@@ -31058,6 +31099,49 @@ async function afterSave() {
     showLoadError(e);
     status("\u05D4\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05E2\u05E0\u05DF, \u05D0\u05DA \u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05E0\u05DB\u05E9\u05DC. \u05E0\u05E1\u05D4 \u05DC\u05E8\u05E2\u05E0\u05DF \u05E9\u05D5\u05D1.");
   }
+}
+function destinationHome() {
+  routeCleanup?.();
+  routeCleanup = null;
+  window.dispatchEvent(new Event("scroll"));
+  $("#tabs").innerHTML = "";
+  document.documentElement.style.setProperty("--navigation-space", "24px");
+  $("#view").innerHTML = '<section class="destination-home"><div class="row"><div><h2>\u05DC\u05D0\u05DF \u05D9\u05D5\u05E6\u05D0\u05D9\u05DD?</h2><p class="muted">\u05D1\u05D7\u05E8 \u05D9\u05E2\u05D3 \u05DC\u05EA\u05DB\u05E0\u05D5\u05DF \u05D4\u05DE\u05E1\u05DC\u05D5\u05DC, \u05D4\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D5\u05D4\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05DC\u05DA</p></div><button id="add-destination">+ \u05D9\u05E2\u05D3 \u05D7\u05D3\u05E9</button></div><div class="destination-grid">' + destinations.map((d) => '<article class="destination-card ' + (d.is_active === false ? "destination-inactive" : "") + '"><span class="badge">' + (d.is_active === false ? "\u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC" : "\u05E4\u05E2\u05D9\u05DC") + "</span><h3>" + esc2(d.destination_name || d.title) + "</h3><p>" + esc2(d.settings.days) + " \u05D9\u05DE\u05D9\u05DD" + (d.settings.start ? " \xB7 " + esc2(d.settings.start) : " \xB7 \u05EA\u05D0\u05E8\u05D9\u05DA \u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + '</p><div class="row"><button data-destination-open="' + esc2(d.id) + '" class="primary">\u05E4\u05EA\u05D7 \u05EA\u05DB\u05E0\u05D5\u05DF</button><button data-destination-edit="' + esc2(d.id) + '">\u05E2\u05E8\u05D9\u05DB\u05EA \u05D9\u05E2\u05D3</button></div></article>').join("") + "</div>" + (destinations.length ? "" : "<p>\u05D4\u05D5\u05E1\u05E3 \u05D0\u05EA \u05D4\u05D9\u05E2\u05D3 \u05D4\u05E8\u05D0\u05E9\u05D5\u05DF \u05E9\u05DC\u05DA \u05DB\u05D3\u05D9 \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC.</p>") + "</section>";
+  $("#add-destination").onclick = () => destinationEditor();
+  $("#view").querySelectorAll("[data-destination-open]").forEach((b) => b.onclick = () => {
+    if (busy) return;
+    selectedTripId = b.dataset.destinationOpen;
+    trip = null;
+    tab = "stop";
+    categories = { place: null, booking: null, task: null };
+    workViews = { booking: "stats", task: "stats" };
+    statusFilters = { booking: "", task: "" };
+    routeView = "map";
+    epoch++;
+    viewEpoch++;
+    load().catch(showLoadError);
+  });
+  $("#view").querySelectorAll("[data-destination-edit]").forEach((b) => b.onclick = () => destinationEditor(destinations.find((d) => d.id === b.dataset.destinationEdit)));
+}
+function destinationEditor(existing) {
+  viewEpoch++;
+  $("#editor").innerHTML = '<form id="destination-form"><h2>' + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05D9\u05E2\u05D3" : "\u05D9\u05E2\u05D3 \u05D7\u05D3\u05E9") + "</h2>" + field("destination", "\u05E9\u05DD \u05D4\u05D9\u05E2\u05D3", existing?.destination_name || "") + '<label class="destination-active"><input name="active" type="checkbox" ' + (existing?.is_active === false ? "" : "checked") + '> \u05D9\u05E2\u05D3 \u05E4\u05E2\u05D9\u05DC</label><p class="muted">\u05D9\u05E2\u05D3 \u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC \u05E0\u05E9\u05DE\u05E8, \u05D5\u05D0\u05E4\u05E9\u05E8 \u05DC\u05D7\u05D6\u05D5\u05E8 \u05DC\u05EA\u05DB\u05E0\u05D5\u05DF \u05E9\u05DC\u05D5 \u05D1\u05DB\u05DC \u05E2\u05EA.</p><div class="row"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D9\u05E2\u05D3</button><button type="button" id="cancel-destination">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p></form>';
+  const form = $("#destination-form");
+  form.elements.destination.required = true;
+  form.elements.destination.maxLength = 100;
+  $("#cancel-destination").onclick = () => $("#editor").close();
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const name = form.elements.destination.value.trim(), active = form.elements.active.checked;
+    if (!name) return;
+    const okay = await saveOperation(() => existing ? repo.updateDestination(existing.id, existing.version, name, active) : repo.createDestination(session.user.id, name, active));
+    if (okay) {
+      $("#editor").close();
+      await load();
+      status("\u05D4\u05D9\u05E2\u05D3 \u05E0\u05E9\u05DE\u05E8");
+    }
+  };
+  $("#editor").showModal();
 }
 function focusView() {
   const heading = $("#view h2");
@@ -31109,7 +31193,7 @@ function render() {
           heading.focus();
           heading.scrollIntoView?.({ block: "start" });
         }
-      });
+      }, trip.destination_name);
       return;
     }
   }
@@ -31131,7 +31215,7 @@ function render() {
       if (statusFilters[tab]) items = items.filter((x) => workflowStatus(x) === statusFilters[tab]);
     }
   }
-  if (!statistics) recordsMarkup = '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05D4\u05E6\u05D2\u05D4 \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9.</p>");
+  if (!statistics) recordsMarkup = '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items, trip.destination_name) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05D4\u05E6\u05D2\u05D4 \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9.</p>");
   $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + workflowMenu + categoryMenu + recordsMarkup + "</section>";
   $("#view").querySelectorAll("[data-route-view]").forEach((b) => b.onclick = () => {
     routeView = b.dataset.routeView;
@@ -31198,7 +31282,7 @@ function edit(kind, existing) {
 function download(text) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/json" })), a = document.createElement("a");
   a.href = url;
-  a.download = "thailand-moto-trip-backup.json";
+  a.download = "motor-trip-" + (trip?.destination_name || "destination") + "-backup.json";
   document.body.append(a);
   a.click();
   a.remove();
@@ -31218,7 +31302,7 @@ function preview(parsed) {
   $("#editor").showModal();
 }
 function settings() {
-  $("#view").innerHTML = '<section><h2>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC</h2><form id="settingsform">' + field("start", "\u05EA\u05D0\u05E8\u05D9\u05DA \u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05EA\u05D5\u05DB\u05E0\u05DF", trip.settings.start, "date") + field("days", "\u05DE\u05E1\u05E4\u05E8 \u05D9\u05DE\u05D9\u05DD", trip.settings.days, "number") + field("budget", "\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DB\u05D5\u05DC\u05DC \u20AA", trip.settings.budget, "number") + '<button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D1\u05E2\u05E0\u05DF</button></form></section><section><h2>\u05D2\u05D9\u05D1\u05D5\u05D9 \u05D5\u05D4\u05E2\u05D1\u05E8\u05EA \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD</h2><p>\u05D4\u05DE\u05D9\u05D3\u05E2 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05DE\u05D5\u05DE\u05DC\u05E5 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D2\u05D9\u05D1\u05D5\u05D9 \u05DC\u05E4\u05E0\u05D9 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D2\u05D3\u05D5\u05DC\u05D9\u05DD.</p><button id="export">\u05D9\u05E6\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON</button><label>\u05D9\u05D1\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON<input id="import" type="file" accept="application/json,.json"></label><button id="localimport">\u05D4\u05E2\u05D1\u05E8 \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05DE\u05D4\u05D2\u05E8\u05E1\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D1\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D6\u05D4</button><p>\u05D4\u05D9\u05D9\u05D1\u05D5\u05D0 \u05DE\u05D5\u05E1\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD \u05DC\u05D0\u05D7\u05E8 \u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4. \u05D4\u05D5\u05D0 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05D5\u05D7\u05E7 \u05D0\u05D5 \u05DE\u05D7\u05DC\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD.</p></section>';
+  $("#view").innerHTML = "<section><h2>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA " + esc2(trip.destination_name || "\u05D4\u05D9\u05E2\u05D3") + '</h2><form id="settingsform">' + field("start", "\u05EA\u05D0\u05E8\u05D9\u05DA \u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05EA\u05D5\u05DB\u05E0\u05DF", trip.settings.start, "date") + field("days", "\u05DE\u05E1\u05E4\u05E8 \u05D9\u05DE\u05D9\u05DD", trip.settings.days, "number") + field("budget", "\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DB\u05D5\u05DC\u05DC \u20AA", trip.settings.budget, "number") + '<button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D1\u05E2\u05E0\u05DF</button></form></section><section><h2>\u05D2\u05D9\u05D1\u05D5\u05D9 \u05D5\u05D4\u05E2\u05D1\u05E8\u05EA \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD</h2><p>\u05D4\u05DE\u05D9\u05D3\u05E2 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05DE\u05D5\u05DE\u05DC\u05E5 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D2\u05D9\u05D1\u05D5\u05D9 \u05DC\u05E4\u05E0\u05D9 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D2\u05D3\u05D5\u05DC\u05D9\u05DD.</p><button id="export">\u05D9\u05E6\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON</button><label>\u05D9\u05D1\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON<input id="import" type="file" accept="application/json,.json"></label><button id="localimport">\u05D4\u05E2\u05D1\u05E8 \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05DE\u05D4\u05D2\u05E8\u05E1\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D1\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D6\u05D4</button><p>\u05D4\u05D9\u05D9\u05D1\u05D5\u05D0 \u05DE\u05D5\u05E1\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD \u05DC\u05D0\u05D7\u05E8 \u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4. \u05D4\u05D5\u05D0 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05D5\u05D7\u05E7 \u05D0\u05D5 \u05DE\u05D7\u05DC\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD.</p></section>';
   $("#settingsform").onsubmit = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target), settings2 = { start: fd.get("start"), days: Number(fd.get("days")), budget: Number(fd.get("budget")), currency: "ILS" };
