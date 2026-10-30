@@ -16,3 +16,7 @@ The mobile interface uses four primary tabs and a More menu for overview, equipm
 After login, the destination picker shows all owner-visible trips. Destinations have an independent active flag and isolated trip items. Inactive destinations remain editable; this flag is organizational and does not change access permissions. Use New destination to create a future trip such as Vietnam. Existing Thailand data is retained.
 
 The multi-destination schema upgrade is in supabase/multi-destinations.sql (already applied to the existing project). Destination updates use optimistic versions and owner-based RLS. Password recovery redirects use the current application base URL; Supabase must allow the published /motor-trip-studio/ URL.
+
+## Destination planning agent
+
+Destination edit includes a planning questionnaire, input approval, cost allowance and safe run review. Server enforcement: 20 ILS/account/month, 5 ILS/run, no customer billing, no purchases or messages. Real AI execution remains disabled until server-side provider credentials and verified, unexpired pricing are configured. See docs/planning-agent.md for secure activation and operational limitations.
