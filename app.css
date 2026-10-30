@@ -1909,3 +1909,34 @@ section:has(> #route-map-panel) > .row {
 #tabs:empty {
   display: none;
 }
+button.workflow-stat {
+  align-items: flex-start;
+  text-align: start;
+  border: 0;
+  border-inline-start: 3px solid #a8c8bc;
+  white-space: normal;
+}
+button.workflow-stat:hover {
+  background: #e6f2ef;
+  box-shadow: 0 2px 8px #12323512;
+}
+.stat-drill {
+  border: 0;
+  background: transparent;
+  color: #12665b;
+  padding: 4px 8px;
+  min-height: 44px;
+  min-width: 44px;
+  box-shadow: none;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.stat-drill:hover {
+  background: #e6f2ef;
+  color: #0b4d45;
+}
+.workflow-table td {
+  padding: 4px 8px;
+}
