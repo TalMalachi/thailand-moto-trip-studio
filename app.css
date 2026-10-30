@@ -1713,3 +1713,38 @@ section:has(> #route-map-panel) > .row {
   scroll-margin-top: 8px;
   border-radius: 0;
 }
+#floating-header {
+  position: sticky;
+  top: 0;
+  z-index: 1350;
+  background: var(--canvas);
+  padding-top: 44px;
+  max-height: 65dvh;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px #12323512;
+  transition: transform .2s ease, visibility .2s;
+}
+#floating-header.is-collapsed {
+  transform: translateY(-105%);
+  visibility: hidden;
+  pointer-events: none;
+}
+.header-toggle {
+  position: fixed;
+  top: calc(6px + env(safe-area-inset-top));
+  inset-inline-end: 12px;
+  z-index: 1400;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #123235;
+  border: 1px solid #c9dcd5;
+  font-size: 12px;
+  box-shadow: 0 3px 12px #12323520;
+}
+.header-toggle.is-collapsed {
+  background: #123235;
+  color: #fff;
+  border-color: #123235;
+}

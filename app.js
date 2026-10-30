@@ -9574,6 +9574,41 @@ var require_leaflet_src = __commonJS({
   }
 });
 
+// src/header-panel.js
+function mountHeaderPanel(doc, win, isEnabled) {
+  const header = doc.querySelector(".site-header"), account2 = doc.querySelector("#account");
+  if (!header || !account2) return;
+  const panel = doc.createElement("div");
+  panel.id = "floating-header";
+  header.before(panel);
+  panel.append(header, account2);
+  const toggle = doc.createElement("button");
+  toggle.type = "button";
+  toggle.className = "header-toggle";
+  toggle.setAttribute("aria-controls", panel.id);
+  doc.body.append(toggle);
+  let collapsed = false, previous = win.scrollY || 0, openedAt = previous;
+  function update(value) {
+    collapsed = value;
+    panel.classList.toggle("is-collapsed", value);
+    panel.inert = value;
+    toggle.setAttribute("aria-expanded", String(!value));
+    toggle.textContent = value ? "\u05D4\u05E6\u05D2 \u05DB\u05D5\u05EA\u05E8\u05EA \u2304" : "\u05DE\u05D6\u05E2\u05E8 \u05DB\u05D5\u05EA\u05E8\u05EA \u2303";
+    toggle.classList.toggle("is-collapsed", value);
+  }
+  toggle.onclick = () => {
+    update(!collapsed);
+    openedAt = win.scrollY || 0;
+  };
+  win.addEventListener("scroll", () => {
+    const y = win.scrollY || 0;
+    if (!isEnabled() || y < 20) update(false);
+    else if (y > previous && y > 80 && y - openedAt > 30) update(true);
+    previous = y;
+  }, { passive: true });
+  update(false);
+}
+
 // node_modules/@supabase/supabase-js/dist/tracingRegistry.mjs
 var EXTRACTOR_KEY = Symbol.for("@supabase/supabase-js.traceContextExtractor");
 function getTraceContextExtractor() {
@@ -30804,6 +30839,7 @@ var busy = false;
 var epoch = 0;
 var viewEpoch = 0;
 var authVersion = 0;
+mountHeaderPanel(document, window, () => Boolean(session && trip));
 function status(text) {
   $("#message").textContent = text;
   const feedback = $("#editor").querySelector("[data-dialog-status]");
