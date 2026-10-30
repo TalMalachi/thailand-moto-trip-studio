@@ -30774,7 +30774,10 @@ function mountRouteMap(root, items, onOpenDay) {
     import_leaflet.default.marker([group.lat, group.lng], { icon: icon2, title: group.points.map((x) => "\u05D9\u05D5\u05DD " + x.day + " \xB7 " + x.label).join(" / ") }).bindPopup(popup, { ...popupDimensions(map.getSize().x, map.getSize().y), className: "route-popup", autoPanPadding: [16, 16], keepInView: true }).addTo(map);
   }
   map.fitBounds(groups.map((x) => [x.lat, x.lng]), { padding: [30, 30], maxZoom: 12 });
-  const timer = setTimeout(() => map.invalidateSize(), 0), observer = typeof ResizeObserver === "function" ? new ResizeObserver(() => map.invalidateSize()) : null;
+  const timer = setTimeout(() => {
+    map.invalidateSize();
+    container.scrollIntoView?.({ block: "start", behavior: "instant" });
+  }, 0), observer = typeof ResizeObserver === "function" ? new ResizeObserver(() => map.invalidateSize()) : null;
   observer?.observe(container);
   return () => {
     clearTimeout(timer);
