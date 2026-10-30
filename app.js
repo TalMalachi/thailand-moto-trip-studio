@@ -9574,6 +9574,37 @@ var require_leaflet_src = __commonJS({
   }
 });
 
+// src/workflow.js
+var workflowStatuses = [["opened", "\u05E0\u05E4\u05EA\u05D7"], ["read_by_agent", "\u05E0\u05E7\u05E8\u05D0 \u05E2\u05F4\u05D9 \u05D4\u05E1\u05D5\u05DB\u05DF"], ["email_sent", "\u05E0\u05E9\u05DC\u05D7 \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC"], ["awaiting_approval", "\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8\u05DA"], ["awaiting_details", "\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D8\u05D9\u05DD"], ["updated", "\u05DE\u05E2\u05D5\u05D3\u05DB\u05DF"], ["rejected", "\u05E0\u05D3\u05D7\u05D4"], ["completed", "\u05E1\u05D9\u05D9\u05DD \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4"]];
+function workflowStatus(item) {
+  const p = item.payload;
+  if (workflowStatuses.some(([id]) => id === p.workflowStatus)) return p.workflowStatus;
+  return item.kind === "task" && p.done || ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(p.status) ? "completed" : "opened";
+}
+function workflowLabel(item) {
+  return workflowStatuses.find(([id]) => id === workflowStatus(item))[1];
+}
+function categoryOf(item) {
+  return (item.kind === "task" ? item.payload.category : item.payload.type)?.trim() || (item.kind === "task" ? "\u05DB\u05DC\u05DC\u05D9" : "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4");
+}
+function workflowStatistics(items) {
+  const counts = Object.fromEntries(workflowStatuses.map(([id]) => [id, 0])), categories2 = /* @__PURE__ */ new Map();
+  for (const item of items) {
+    const category = categoryOf(item), status2 = workflowStatus(item);
+    counts[status2]++;
+    if (!categories2.has(category)) categories2.set(category, { category, total: 0, counts: Object.fromEntries(workflowStatuses.map(([id]) => [id, 0])) });
+    const row = categories2.get(category);
+    row.total++;
+    row.counts[status2]++;
+  }
+  return { total: items.length, counts, categories: [...categories2.values()].sort((a, b) => a.category.localeCompare(b.category, "he")) };
+}
+var esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function statisticsMarkup(items) {
+  const s = workflowStatistics(items);
+  return '<div class="workflow-statistics"><p class="muted">' + s.total + ' \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9</p><div class="workflow-status-grid">' + workflowStatuses.map(([id, label]) => '<div class="workflow-stat" data-status="' + id + '"><strong>' + s.counts[id] + "</strong><span>" + label + "</span></div>").join("") + '</div><h3>\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05D5\u05E1\u05D8\u05D8\u05D5\u05E1\u05D9\u05DD</h3><div class="workflow-table-scroll" tabindex="0" role="region" aria-label="\u05D8\u05D1\u05DC\u05EA \u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA \u05DC\u05E4\u05D9 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D5\u05E1\u05D8\u05D8\u05D5\u05E1"><table class="workflow-table"><caption>\u05DE\u05E1\u05E4\u05E8 \u05D4\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05DB\u05DC \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4 \u05D5\u05D1\u05DB\u05DC \u05E1\u05D8\u05D8\u05D5\u05E1</caption><thead><tr><th scope="col">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</th><th scope="col">\u05E1\u05D4\u05F4\u05DB</th>' + workflowStatuses.map(([, label]) => '<th scope="col">' + label + "</th>").join("") + "</tr></thead><tbody>" + s.categories.map((row) => '<tr><th scope="row">' + esc(row.category) + "</th><td>" + row.total + "</td>" + workflowStatuses.map(([id]) => "<td>" + row.counts[id] + "</td>").join("") + "</tr>").join("") + "</tbody></table></div>" + (s.total ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05D4\u05E6\u05D2\u05EA \u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA.</p>") + "</div>";
+}
+
 // src/header-panel.js
 function mountHeaderPanel(doc, win, isEnabled) {
   const header = doc.querySelector(".site-header"), account2 = doc.querySelector("#account");
@@ -30449,6 +30480,20 @@ var keys = { booking: ["name", "type", "status", "supplier", "cost", "paid", "re
 function validatePayload(kind, input) {
   if (!keys[kind] || !input || typeof input !== "object" || Array.isArray(input)) throw Error("Invalid item");
   const out = {};
+  if (["booking", "task"].includes(kind)) {
+    if (input.workflowStatus !== void 0) {
+      if (!workflowStatuses.some(([id]) => id === input.workflowStatus)) throw Error("Invalid workflow status");
+      out.workflowStatus = input.workflowStatus;
+    }
+    if (input.workflowUpdatedAt !== void 0) {
+      if (typeof input.workflowUpdatedAt !== "string" || !Number.isFinite(Date.parse(input.workflowUpdatedAt))) throw Error("Invalid workflow timestamp");
+      out.workflowUpdatedAt = input.workflowUpdatedAt;
+    }
+    if (input.workflowUpdatedBy !== void 0) {
+      if (!["user", "agent"].includes(input.workflowUpdatedBy)) throw Error("Invalid workflow actor");
+      out.workflowUpdatedBy = input.workflowUpdatedBy;
+    }
+  }
   for (const key of keys[kind]) {
     const v = input[key];
     if (kind === "task" && key === "category" && v === void 0) continue;
@@ -30675,9 +30720,9 @@ function externalLink(url, label) {
 }
 function recordCard(item, fields2, extra = "") {
   const p = item.payload, title = p.name ?? p.place ?? p.title ?? "\u05E4\u05E8\u05D9\u05D8", isStop = item.kind === "stop", isTask = item.kind === "task";
-  const badges = [isStop ? "\u05D9\u05D5\u05DD " + p.day : p.type ?? p.category ?? "", isStop ? p.kind : "", p.status ?? (isTask ? p.done ? "\u05D4\u05D5\u05E9\u05DC\u05DE\u05D4" : "\u05DC\u05D1\u05D9\u05E6\u05D5\u05E2" : "")].filter(Boolean);
+  const badges = [isStop ? "\u05D9\u05D5\u05DD " + p.day : p.type ?? p.category ?? "", isStop ? p.kind : "", p.status ?? ""].filter(Boolean);
   const price = item.kind === "booking" ? '<div class="record-price">' + (Number(p.cost) > 0 || ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(p.status) && p.cost !== void 0 ? escapeHtml(formatMoney(p.cost)) : "\u05D8\u05E8\u05DD \u05EA\u05D5\u05DE\u05D7\u05E8") + "</div>" : "";
-  const omitted = /* @__PURE__ */ new Set(["name", "place", "title", "type", "category", "status", "day", "kind", "notes"]);
+  const omitted = /* @__PURE__ */ new Set(["name", "place", "title", "type", "category", "status", "day", "kind", "notes", "workflowStatus"]);
   if (item.kind === "booking") omitted.add("cost");
   const meta = fields2.filter(([key]) => !omitted.has(key) && p[key] !== void 0 && p[key] !== "").map(([key, label]) => {
     const value = ["url", "guide"].includes(key) ? externalLink(p[key], label) : escapeHtml(["paid", "cost"].includes(key) ? formatMoney(p[key]) : p[key]);
@@ -30685,7 +30730,7 @@ function recordCard(item, fields2, extra = "") {
   }).join("");
   const notes = p.notes ? String(p.notes) : "";
   const noteMarkup = notes.length > 170 ? '<p class="record-excerpt">' + escapeHtml(notes.slice(0, 125)) + '\u2026</p><details class="card-notes"><summary><span>\u05E4\u05E8\u05D8\u05D9 \u05D4\u05EA\u05DB\u05E0\u05D5\u05DF</span>' + icon("chevron") + "</summary><p>" + escapeHtml(notes) + "</p></details>" : notes ? '<p class="record-notes">' + escapeHtml(notes) + "</p>" : "";
-  return '<article class="card record-card ' + (isTask && p.done ? "is-complete" : "") + '" data-id="' + escapeHtml(item.id) + '" aria-labelledby="record-' + escapeHtml(item.id) + '"><div class="record-badges">' + badges.map((x) => '<span class="badge">' + escapeHtml(x) + "</span>").join("") + '</div><h3 class="record-title" id="record-' + escapeHtml(item.id) + '">' + escapeHtml(title) + "</h3>" + price + (isTask ? '<label class="task-toggle"><input type="checkbox" aria-labelledby="record-' + escapeHtml(item.id) + " task-label-" + escapeHtml(item.id) + '" ' + (p.done ? "checked" : "") + '><span id="task-label-' + escapeHtml(item.id) + '">\u05D4\u05DE\u05E9\u05D9\u05DE\u05D4 \u05D4\u05D5\u05E9\u05DC\u05DE\u05D4</span></label>' : "") + (meta ? '<dl class="record-meta">' + meta + "</dl>" : "") + noteMarkup + extra + '<div class="record-actions"><button type="button" data-action="edit">' + icon("edit") + '\u05E2\u05E8\u05D9\u05DB\u05D4</button><button type="button" data-action="delete" class="danger">' + icon("trash") + "\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></article>";
+  return '<article class="card record-card ' + (isTask && workflowStatus(item) === "completed" ? "is-complete" : "") + '" data-id="' + escapeHtml(item.id) + '" aria-labelledby="record-' + escapeHtml(item.id) + '"><div class="record-badges">' + badges.map((x) => '<span class="badge">' + escapeHtml(x) + "</span>").join("") + (["booking", "task"].includes(item.kind) ? '<span class="badge workflow-badge" data-workflow-status="' + workflowStatus(item) + '">' + workflowLabel(item) + "</span>" : "") + '</div><h3 class="record-title" id="record-' + escapeHtml(item.id) + '">' + escapeHtml(title) + "</h3>" + price + (isTask ? '<label class="task-toggle"><input type="checkbox" aria-labelledby="record-' + escapeHtml(item.id) + " task-label-" + escapeHtml(item.id) + '" ' + (workflowStatus(item) === "completed" ? "checked" : "") + '><span id="task-label-' + escapeHtml(item.id) + '">\u05D4\u05DE\u05E9\u05D9\u05DE\u05D4 \u05D4\u05D5\u05E9\u05DC\u05DE\u05D4</span></label>' : "") + (meta ? '<dl class="record-meta">' + meta + "</dl>" : "") + noteMarkup + extra + '<div class="record-actions"><button type="button" data-action="edit">' + icon("edit") + '\u05E2\u05E8\u05D9\u05DB\u05D4</button><button type="button" data-action="delete" class="danger">' + icon("trash") + "\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></article>";
 }
 
 // src/daily-navigation.js
@@ -30827,9 +30872,9 @@ var client = createClient(cloudConfig.url, cloudConfig.publishableKey, { auth: {
 var auth = createAuth(client, "https://talmalachi.github.io/thailand-moto-trip-studio/");
 var repo = createRepository(client);
 var $ = (s) => document.querySelector(s);
-var esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+var esc2 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 var tabs = [["dashboard", "\u05E1\u05E7\u05D9\u05E8\u05D4"], ["booking", "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA"], ["stop", "\u05DE\u05E1\u05DC\u05D5\u05DC"], ["place", "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD"], ["gear", "\u05E6\u05D9\u05D5\u05D3 \u05D5\u05D4\u05D3\u05E8\u05DB\u05D5\u05EA"], ["task", "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA"], ["settings", "\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D5\u05D2\u05D9\u05D1\u05D5\u05D9"]];
-var fields = { booking: [["name", "\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4"], ["type", "\u05E1\u05D5\u05D2"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["supplier", "\u05E1\u05E4\u05E7"], ["cost", "\u05DE\u05D7\u05D9\u05E8 \u05DB\u05D5\u05DC\u05DC \u20AA", "number"], ["paid", "\u05E9\u05D5\u05DC\u05DD \u20AA", "number"], ["ref", "\u05DE\u05E1\u05E4\u05E8 \u05D0\u05D9\u05E9\u05D5\u05E8 / \u05D4\u05D6\u05DE\u05E0\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D6\u05DE\u05E0\u05D4", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], stop: [["day", "\u05D9\u05D5\u05DD \u05D1\u05D8\u05D9\u05D5\u05DC", "number"], ["place", "\u05DE\u05E7\u05D5\u05DD / \u05D9\u05E2\u05D3"], ["kind", "\u05E1\u05D5\u05D2 \u05E2\u05E6\u05D9\u05E8\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E0\u05D9\u05D5\u05D5\u05D8", "url"], ["notes", "\u05EA\u05DB\u05E0\u05D5\u05DF \u05D5\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"], ["lat", "\u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 (Latitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"], ["lng", "\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA (Longitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"]], place: [["name", "\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD"], ["type", "\u05E1\u05D5\u05D2"], ["area", "\u05D0\u05D6\u05D5\u05E8"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05E4\u05D5\u05EA / \u05D0\u05EA\u05E8", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA / \u05D8\u05DC\u05E4\u05D5\u05DF / \u05E9\u05E2\u05D5\u05EA", "textarea"]], gear: [["name", "\u05E4\u05E8\u05D9\u05D8"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E8\u05DB\u05D9\u05E9\u05D4", "url"], ["guide", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D3\u05E8\u05DB\u05EA \u05E9\u05D9\u05DE\u05D5\u05E9", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], task: [["title", "\u05DE\u05E9\u05D9\u05DE\u05D4"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"]] };
+var fields = { booking: [["name", "\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4"], ["type", "\u05E1\u05D5\u05D2"], ["status", "\u05DE\u05E6\u05D1 \u05D4\u05D6\u05DE\u05E0\u05D4 / \u05EA\u05E9\u05DC\u05D5\u05DD"], ["workflowStatus", "\u05E1\u05D8\u05D8\u05D5\u05E1 \u05D8\u05D9\u05E4\u05D5\u05DC", "workflow"], ["supplier", "\u05E1\u05E4\u05E7"], ["cost", "\u05DE\u05D7\u05D9\u05E8 \u05DB\u05D5\u05DC\u05DC \u20AA", "number"], ["paid", "\u05E9\u05D5\u05DC\u05DD \u20AA", "number"], ["ref", "\u05DE\u05E1\u05E4\u05E8 \u05D0\u05D9\u05E9\u05D5\u05E8 / \u05D4\u05D6\u05DE\u05E0\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D6\u05DE\u05E0\u05D4", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], stop: [["day", "\u05D9\u05D5\u05DD \u05D1\u05D8\u05D9\u05D5\u05DC", "number"], ["place", "\u05DE\u05E7\u05D5\u05DD / \u05D9\u05E2\u05D3"], ["kind", "\u05E1\u05D5\u05D2 \u05E2\u05E6\u05D9\u05E8\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E0\u05D9\u05D5\u05D5\u05D8", "url"], ["notes", "\u05EA\u05DB\u05E0\u05D5\u05DF \u05D5\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"], ["lat", "\u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 (Latitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"], ["lng", "\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA (Longitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"]], place: [["name", "\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD"], ["type", "\u05E1\u05D5\u05D2"], ["area", "\u05D0\u05D6\u05D5\u05E8"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05E4\u05D5\u05EA / \u05D0\u05EA\u05E8", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA / \u05D8\u05DC\u05E4\u05D5\u05DF / \u05E9\u05E2\u05D5\u05EA", "textarea"]], gear: [["name", "\u05E4\u05E8\u05D9\u05D8"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E8\u05DB\u05D9\u05E9\u05D4", "url"], ["guide", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D3\u05E8\u05DB\u05EA \u05E9\u05D9\u05DE\u05D5\u05E9", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], task: [["title", "\u05DE\u05E9\u05D9\u05DE\u05D4"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["workflowStatus", "\u05E1\u05D8\u05D8\u05D5\u05E1 \u05D8\u05D9\u05E4\u05D5\u05DC", "workflow"]] };
 var session = null;
 var trip = null;
 var tab = "stop";
@@ -30840,6 +30885,8 @@ var busy = false;
 var epoch = 0;
 var viewEpoch = 0;
 var authVersion = 0;
+var workViews = { booking: "current", task: "current" };
+var statusFilters = { booking: "", task: "" };
 mountHeaderPanel(document, window, () => Boolean(session && trip));
 function status(text) {
   $("#message").textContent = text;
@@ -30848,7 +30895,8 @@ function status(text) {
 }
 var money = formatMoney;
 function field(k, label, value = "", type = "text") {
-  return "<label>" + esc(label) + (type === "textarea" ? '<textarea name="' + k + '">' + esc(value) + "</textarea>" : '<input autocomplete="off" name="' + k + '" type="' + type + '" value="' + esc(value) + '" ' + (["lat", "lng"].includes(k) ? 'inputmode="decimal" ' : "") + (type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>";
+  if (type === "workflow") return "<label>" + esc2(label) + '<select name="' + k + '">' + workflowStatuses.map(([id, text]) => '<option value="' + id + '" ' + (id === value ? "selected" : "") + ">" + text + "</option>").join("") + "</select></label>";
+  return "<label>" + esc2(label) + (type === "textarea" ? '<textarea name="' + k + '">' + esc2(value) + "</textarea>" : '<input autocomplete="off" name="' + k + '" type="' + type + '" value="' + esc2(value) + '" ' + (["lat", "lng"].includes(k) ? 'inputmode="decimal" ' : "") + (type === "number" ? 'min="0" step="any"' : "") + ">") + "</label>";
 }
 function lock(value) {
   busy = value;
@@ -30862,6 +30910,8 @@ function wipe() {
   viewEpoch++;
   session = null;
   trip = null;
+  workViews = { booking: "current", task: "current" };
+  statusFilters = { booking: "", task: "" };
   categories = { place: null, booking: null, task: null };
   busy = false;
   $("#editor").close();
@@ -30940,7 +30990,7 @@ function passwordEditor() {
   $("#editor").showModal();
 }
 function account() {
-  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + '</span><div><strong>\u05D4\u05D8\u05D9\u05D5\u05DC \u05E9\u05DC\u05D9</strong><small dir="auto">' + esc(session.user.email) + '</small></div></div><div class="account-tools"><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
+  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + '</span><div><strong>\u05D4\u05D8\u05D9\u05D5\u05DC \u05E9\u05DC\u05D9</strong><small dir="auto">' + esc2(session.user.email) + '</small></div></div><div class="account-tools"><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
   $("#refresh").onclick = () => {
     if (tab === "settings" && !confirm("\u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05E9\u05DC\u05D0 \u05E0\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D8\u05D5\u05E4\u05E1 \u05D4\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
     load().catch(showLoadError);
@@ -30964,7 +31014,7 @@ function account() {
 function showLoadError(err) {
   trip = null;
   $("#tabs").innerHTML = "";
-  $("#view").innerHTML = "<section><h2>\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D8\u05E2\u05D5\u05DF \u05D0\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC</h2><p>" + esc(err.message) + '</p><button id="retry">\u05E0\u05E1\u05D4 \u05E9\u05D5\u05D1</button></section>';
+  $("#view").innerHTML = "<section><h2>\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D8\u05E2\u05D5\u05DF \u05D0\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC</h2><p>" + esc2(err.message) + '</p><button id="retry">\u05E0\u05E1\u05D4 \u05E9\u05D5\u05D1</button></section>';
   $("#retry").onclick = () => load().catch(showLoadError);
   status("\u05D4\u05DE\u05D9\u05D3\u05E2 \u05DE\u05D4\u05E2\u05E0\u05DF \u05DC\u05D0 \u05E0\u05D8\u05E2\u05DF.");
 }
@@ -31029,7 +31079,7 @@ function render() {
   });
   if (tab === "dashboard") {
     const bookings = trip.items.filter((x) => x.kind === "booking").map((x) => x.payload), tasks = trip.items.filter((x) => x.kind === "task");
-    $("#view").innerHTML = '<div class="cards">' + [["\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D9\u05E2\u05D3", trip.settings.budget ? money(trip.settings.budget) : "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2"], ["\u05E9\u05D5\u05DC\u05DD \u05D1\u05E4\u05D5\u05E2\u05DC", money(bookings.reduce((s, x) => s + Number(x.paid || 0), 0))], ["\u05D4\u05EA\u05D7\u05D9\u05D9\u05D1\u05D5\u05D9\u05D5\u05EA", money(bookings.filter((x) => ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(x.status)).reduce((s, x) => s + Number(x.cost || 0), 0))], ["\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05D1\u05D5\u05E6\u05E2\u05D5", tasks.filter((x) => x.payload.done).length + "/" + tasks.length]].map(([k, v]) => "<section><small>" + k + '</small><div class="metric">' + v + "</div></section>").join("") + "</div><section><h2>\u05EA\u05DE\u05D5\u05E0\u05EA \u05DE\u05E6\u05D1</h2><p>\u05DE\u05E9\u05DA \u05D4\u05D8\u05D9\u05D5\u05DC: " + esc(trip.settings.days) + " \u05D9\u05DE\u05D9\u05DD | \u05D9\u05E6\u05D9\u05D0\u05D4: " + esc(trip.settings.start || "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + "</p><p>\u05D4\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05E0\u05D8\u05E2\u05E0\u05D9\u05DD \u05DE\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05D7\u05D6\u05D5\u05E8 \u05DC\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D4 \u05D0\u05D5 \u05DC\u05D7\u05E5 \u05E2\u05DC \u05E8\u05E2\u05E0\u05DF \u05DB\u05D3\u05D9 \u05DC\u05E7\u05D1\u05DC \u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05DE\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D0\u05D7\u05E8.</p></section>";
+    $("#view").innerHTML = '<div class="cards">' + [["\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D9\u05E2\u05D3", trip.settings.budget ? money(trip.settings.budget) : "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2"], ["\u05E9\u05D5\u05DC\u05DD \u05D1\u05E4\u05D5\u05E2\u05DC", money(bookings.reduce((s, x) => s + Number(x.paid || 0), 0))], ["\u05D4\u05EA\u05D7\u05D9\u05D9\u05D1\u05D5\u05D9\u05D5\u05EA", money(bookings.filter((x) => ["\u05D4\u05D5\u05D6\u05DE\u05DF", "\u05E9\u05D5\u05DC\u05DD"].includes(x.status)).reduce((s, x) => s + Number(x.cost || 0), 0))], ["\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA \u05E9\u05D1\u05D5\u05E6\u05E2\u05D5", tasks.filter((x) => x.payload.done).length + "/" + tasks.length]].map(([k, v]) => "<section><small>" + k + '</small><div class="metric">' + v + "</div></section>").join("") + "</div><section><h2>\u05EA\u05DE\u05D5\u05E0\u05EA \u05DE\u05E6\u05D1</h2><p>\u05DE\u05E9\u05DA \u05D4\u05D8\u05D9\u05D5\u05DC: " + esc2(trip.settings.days) + " \u05D9\u05DE\u05D9\u05DD | \u05D9\u05E6\u05D9\u05D0\u05D4: " + esc2(trip.settings.start || "\u05D8\u05E8\u05DD \u05E0\u05E7\u05D1\u05E2") + "</p><p>\u05D4\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05E0\u05D8\u05E2\u05E0\u05D9\u05DD \u05DE\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05D7\u05D6\u05D5\u05E8 \u05DC\u05D0\u05E4\u05DC\u05D9\u05E7\u05E6\u05D9\u05D4 \u05D0\u05D5 \u05DC\u05D7\u05E5 \u05E2\u05DC \u05E8\u05E2\u05E0\u05DF \u05DB\u05D3\u05D9 \u05DC\u05E7\u05D1\u05DC \u05E2\u05D3\u05DB\u05D5\u05E0\u05D9\u05DD \u05DE\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D0\u05D7\u05E8.</p></section>";
     return;
   }
   if (tab === "settings") {
@@ -31068,15 +31118,37 @@ function render() {
     items.forEach((x) => counts.set(category(x), (counts.get(category(x)) || 0) + 1));
     if (categories[tab] !== null && !counts.has(categories[tab])) categories[tab] = null;
     categoryOptions = [null, ...[...counts.keys()].sort((a, b) => a.localeCompare(b, "he"))];
-    categoryMenu = '<div class="place-filter-bar"><label for="place-category">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</label><select id="place-category" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA ' + esc(tabs.find((x) => x[0] === tab)[1]) + '">' + categoryOptions.map((name, index) => '<option value="' + index + '" ' + (categories[tab] === name ? "selected" : "") + ">" + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</option>").join("") + "</select></div>";
+    categoryMenu = '<div class="place-filter-bar"><label for="place-category">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</label><select id="place-category" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA ' + esc2(tabs.find((x) => x[0] === tab)[1]) + '">' + categoryOptions.map((name, index) => '<option value="' + index + '" ' + (categories[tab] === name ? "selected" : "") + ">" + esc2(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</option>").join("") + "</select></div>";
     if (categories[tab] !== null) items = items.filter((x) => category(x) === categories[tab]);
   }
-  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
+  let workflowMenu = "", recordsMarkup = "";
+  const managed = ["booking", "task"].includes(tab), statistics = managed && workViews[tab] === "stats";
+  if (managed) {
+    workflowMenu = '<div class="workflow-views" role="group" aria-label="\u05EA\u05E6\u05D5\u05D2\u05EA ' + esc2(tabs.find((x) => x[0] === tab)[1]) + '">' + [["current", "\u05DE\u05E6\u05D1 \u05E0\u05D5\u05DB\u05D7\u05D9"], ["stats", "\u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA"]].map(([id, label]) => '<button type="button" data-work-view="' + id + '" aria-pressed="' + (workViews[tab] === id) + '" class="' + (workViews[tab] === id ? "active" : "") + '">' + label + "</button>").join("") + "</div>";
+    if (statistics) recordsMarkup = statisticsMarkup(items);
+    else {
+      workflowMenu += '<div class="place-filter-bar"><label for="workflow-filter">\u05E1\u05D8\u05D8\u05D5\u05E1</label><select id="workflow-filter"><option value="">\u05DB\u05DC \u05D4\u05E1\u05D8\u05D8\u05D5\u05E1\u05D9\u05DD</option>' + workflowStatuses.map(([id, label]) => '<option value="' + id + '" ' + (statusFilters[tab] === id ? "selected" : "") + ">" + label + " (" + items.filter((x) => workflowStatus(x) === id).length + ")</option>").join("") + "</select></div>";
+      if (statusFilters[tab]) items = items.filter((x) => workflowStatus(x) === statusFilters[tab]);
+    }
+  }
+  if (!statistics) recordsMarkup = '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05D4\u05E6\u05D2\u05D4 \u05D1\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9.</p>");
+  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + workflowMenu + categoryMenu + recordsMarkup + "</section>";
   $("#view").querySelectorAll("[data-route-view]").forEach((b) => b.onclick = () => {
     routeView = b.dataset.routeView;
     render();
     focusView();
   });
+  $("#view").querySelectorAll("[data-work-view]").forEach((b) => b.onclick = () => {
+    workViews[tab] = b.dataset.workView;
+    render();
+    $("#view [data-work-view][aria-pressed=true]")?.focus();
+  });
+  const statusSelect = $("#workflow-filter");
+  if (statusSelect) statusSelect.onchange = () => {
+    statusFilters[tab] = statusSelect.value;
+    render();
+    $("#workflow-filter")?.focus();
+  };
   const categorySelect = $("#place-category");
   if (categorySelect) categorySelect.onchange = () => {
     categories[tab] = categoryOptions[Number(categorySelect.value)];
@@ -31094,20 +31166,27 @@ function render() {
     const cb = card.querySelector("input[type=checkbox]");
     if (cb) cb.onchange = async () => {
       const done = cb.checked;
-      if (await saveOperation(() => repo.updateItem(item.id, item.version, item.kind, { ...item.payload, done }))) await afterSave();
-      else cb.checked = item.payload.done;
+      if (await saveOperation(() => repo.updateItem(item.id, item.version, item.kind, { ...item.payload, done, workflowStatus: done ? "completed" : "opened", workflowUpdatedAt: (/* @__PURE__ */ new Date()).toISOString(), workflowUpdatedBy: "user" }))) await afterSave();
+      else cb.checked = workflowStatus(item) === "completed";
     };
   });
 }
 function edit(kind, existing) {
   viewEpoch++;
   const item = existing ? structuredClone(existing) : { id: crypto.randomUUID(), kind, payload: ["place", "booking", "task"].includes(kind) && categories[kind] !== null ? { [kind === "task" ? "category" : "type"]: categories[kind] === "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4" ? "" : categories[kind] } : {} };
-  $("#editor").innerHTML = "<form><h2>" + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05E4\u05E8\u05D9\u05D8" : "\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D9\u05D8") + "</h2>" + fields[kind].map(([k, t, type]) => field(k, t, item.payload[k] ?? (type === "number" ? k === "day" ? 1 : 0 : ""), type)).join("") + '<div class="row form-actions"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D1\u05E2\u05E0\u05DF</button><button type="button" id="cancel">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p><p class="form-hint">\u05D4\u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D9\u05D9\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF.</p></form>';
+  $("#editor").innerHTML = "<form><h2>" + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05E4\u05E8\u05D9\u05D8" : "\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D9\u05D8") + "</h2>" + fields[kind].map(([k, t, type]) => field(k, t, item.payload[k] ?? (type === "workflow" ? workflowStatus(item) : type === "number" ? k === "day" ? 1 : 0 : ""), type)).join("") + '<div class="row form-actions"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D1\u05E2\u05E0\u05DF</button><button type="button" id="cancel">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p><p class="form-hint">\u05D4\u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D9\u05D9\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF.</p></form>';
   $("#cancel").onclick = () => $("#editor").close();
   $("#editor form").onsubmit = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target), payload = { ...item.payload };
     for (const [k, t, type] of fields[kind]) payload[k] = type === "number" ? Number(fd.get(k)) : fd.get(k);
+    if (["booking", "task"].includes(kind)) {
+      if (!existing || payload.workflowStatus !== workflowStatus(item)) {
+        payload.workflowUpdatedAt = (/* @__PURE__ */ new Date()).toISOString();
+        payload.workflowUpdatedBy = "user";
+      }
+      if (kind === "task") payload.done = payload.workflowStatus === "completed";
+    }
     const okay = await saveOperation(() => existing ? repo.updateItem(item.id, item.version, kind, payload) : repo.createItem(trip.id, { ...item, payload }));
     if (okay) {
       $("#editor").close();
@@ -31128,7 +31207,7 @@ function download(text) {
 function preview(parsed) {
   const plan = previewImport(trip.items, parsed.items);
   const tripId = trip.id;
-  $("#editor").innerHTML = "<h2>\u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4 \u05DC\u05D9\u05D9\u05D1\u05D5\u05D0</h2><p>\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD: " + plan.add.length + " | \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD \u05E9\u05D9\u05D9\u05E9\u05D0\u05E8\u05D5 \u05DC\u05DC\u05D0 \u05E9\u05D9\u05E0\u05D5\u05D9: " + plan.skip.length + "</p><p>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC \u05D5\u05D4\u05DE\u05D9\u05D3\u05E2 \u05D4\u05E7\u05D9\u05D9\u05DD \u05DC\u05D0 \u05D9\u05D5\u05D7\u05DC\u05E4\u05D5.</p><ul>" + plan.add.map((x) => "<li>" + esc(x.payload.place ?? x.payload.name ?? x.payload.title) + "</li>").join("") + '</ul><div class="row"><button id="confirmimport">\u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05E2\u05E0\u05DF</button><button id="cancelimport">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div>';
+  $("#editor").innerHTML = "<h2>\u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4 \u05DC\u05D9\u05D9\u05D1\u05D5\u05D0</h2><p>\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD: " + plan.add.length + " | \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD \u05E9\u05D9\u05D9\u05E9\u05D0\u05E8\u05D5 \u05DC\u05DC\u05D0 \u05E9\u05D9\u05E0\u05D5\u05D9: " + plan.skip.length + "</p><p>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D4\u05D8\u05D9\u05D5\u05DC \u05D5\u05D4\u05DE\u05D9\u05D3\u05E2 \u05D4\u05E7\u05D9\u05D9\u05DD \u05DC\u05D0 \u05D9\u05D5\u05D7\u05DC\u05E4\u05D5.</p><ul>" + plan.add.map((x) => "<li>" + esc2(x.payload.place ?? x.payload.name ?? x.payload.title) + "</li>").join("") + '</ul><div class="row"><button id="confirmimport">\u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05DC\u05E2\u05E0\u05DF</button><button id="cancelimport">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div>';
   $("#cancelimport").onclick = () => $("#editor").close();
   $("#confirmimport").onclick = async () => {
     if (await saveOperation(() => repo.importItems(tripId, plan.add))) {
@@ -31218,6 +31297,9 @@ if (typeof ResizeObserver === "function") {
   });
   navigationObserver.observe($("#tabs"));
 }
+window.setInterval(() => {
+  if (session && trip && !busy && ["booking", "task"].includes(tab) && !$("#editor").open && document.visibilityState === "visible") load().catch((e) => status("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E8\u05E2\u05E0\u05DF \u05E1\u05D8\u05D8\u05D5\u05E1\u05D9\u05DD: " + e.message));
+}, 3e4);
 /*! Bundled license information:
 
 leaflet/dist/leaflet-src.js:

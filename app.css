@@ -1748,3 +1748,109 @@ section:has(> #route-map-panel) > .row {
   color: #fff;
   border-color: #123235;
 }
+.workflow-views {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #edf3f1;
+  margin: 14px 0;
+}
+.workflow-views button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
+  background: transparent;
+  color: #526b6d;
+  font-size: 14px;
+}
+.workflow-views button.active {
+  background: #fff;
+  color: #123235;
+  box-shadow: 0 2px 5px #12323512;
+}
+.workflow-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.workflow-stat {
+  padding: 14px;
+  border-inline-start: 3px solid #a8c8bc;
+  background: #f5f9f7;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.workflow-stat strong {
+  font-size: 24px;
+  color: #123235;
+}
+.workflow-stat span {
+  font-size: 13px;
+  color: #526b6d;
+}
+.workflow-stat[data-status=awaiting_approval],
+.workflow-stat[data-status=awaiting_details] {
+  border-color: #bc8a30;
+}
+.workflow-stat[data-status=completed] {
+  border-color: #12665b;
+}
+.workflow-stat[data-status=rejected] {
+  border-color: #a42d35;
+}
+.workflow-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.workflow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.workflow-table caption {
+  text-align: start;
+  padding: 12px;
+  color: #526b6d;
+}
+.workflow-table th,
+.workflow-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+  min-width: 90px;
+}
+.workflow-table th:first-child {
+  position: sticky;
+  inset-inline-start: 0;
+  background: #f5f9f7;
+  min-width: 120px;
+  text-align: start;
+  z-index: 1;
+}
+.workflow-table thead {
+  background: #edf3f1;
+}
+.workflow-badge {
+  background: #edf3f1;
+  color: #365653;
+}
+.workflow-badge[data-workflow-status=completed] {
+  background: #e1f2e9;
+  color: #0b4d45;
+}
+.workflow-badge[data-workflow-status=rejected] {
+  background: #fbe7e8;
+  color: #80252a;
+}
+.workflow-badge[data-workflow-status=awaiting_approval],
+.workflow-badge[data-workflow-status=awaiting_details] {
+  background: #fff1d9;
+  color: #78500c;
+}
