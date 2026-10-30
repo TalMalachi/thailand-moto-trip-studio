@@ -30445,12 +30445,13 @@ function createAuth(client2, redirectTo) {
 
 // src/backup.js
 var collections = { booking: "bookings", stop: "stops", place: "places", gear: "gear", task: "tasks" };
-var keys = { booking: ["name", "type", "status", "supplier", "cost", "paid", "ref", "url", "notes"], stop: ["day", "place", "kind", "url", "notes", "lat", "lng"], place: ["name", "type", "area", "url", "notes"], gear: ["name", "category", "status", "url", "guide", "notes"], task: ["title", "done"] };
+var keys = { booking: ["name", "type", "status", "supplier", "cost", "paid", "ref", "url", "notes"], stop: ["day", "place", "kind", "url", "notes", "lat", "lng"], place: ["name", "type", "area", "url", "notes"], gear: ["name", "category", "status", "url", "guide", "notes"], task: ["title", "done", "category"] };
 function validatePayload(kind, input) {
   if (!keys[kind] || !input || typeof input !== "object" || Array.isArray(input)) throw Error("Invalid item");
   const out = {};
   for (const key of keys[kind]) {
     const v = input[key];
+    if (kind === "task" && key === "category" && v === void 0) continue;
     if (key === "lat" || key === "lng") continue;
     if (key === "done") {
       if (v !== void 0 && typeof v !== "boolean") throw Error("Invalid task state");
@@ -30828,11 +30829,11 @@ var repo = createRepository(client);
 var $ = (s) => document.querySelector(s);
 var esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 var tabs = [["dashboard", "\u05E1\u05E7\u05D9\u05E8\u05D4"], ["booking", "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA"], ["stop", "\u05DE\u05E1\u05DC\u05D5\u05DC"], ["place", "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD"], ["gear", "\u05E6\u05D9\u05D5\u05D3 \u05D5\u05D4\u05D3\u05E8\u05DB\u05D5\u05EA"], ["task", "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA"], ["settings", "\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D5\u05D2\u05D9\u05D1\u05D5\u05D9"]];
-var fields = { booking: [["name", "\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4"], ["type", "\u05E1\u05D5\u05D2"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["supplier", "\u05E1\u05E4\u05E7"], ["cost", "\u05DE\u05D7\u05D9\u05E8 \u05DB\u05D5\u05DC\u05DC \u20AA", "number"], ["paid", "\u05E9\u05D5\u05DC\u05DD \u20AA", "number"], ["ref", "\u05DE\u05E1\u05E4\u05E8 \u05D0\u05D9\u05E9\u05D5\u05E8 / \u05D4\u05D6\u05DE\u05E0\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D6\u05DE\u05E0\u05D4", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], stop: [["day", "\u05D9\u05D5\u05DD \u05D1\u05D8\u05D9\u05D5\u05DC", "number"], ["place", "\u05DE\u05E7\u05D5\u05DD / \u05D9\u05E2\u05D3"], ["kind", "\u05E1\u05D5\u05D2 \u05E2\u05E6\u05D9\u05E8\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E0\u05D9\u05D5\u05D5\u05D8", "url"], ["notes", "\u05EA\u05DB\u05E0\u05D5\u05DF \u05D5\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"], ["lat", "\u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 (Latitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"], ["lng", "\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA (Longitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"]], place: [["name", "\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD"], ["type", "\u05E1\u05D5\u05D2"], ["area", "\u05D0\u05D6\u05D5\u05E8"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05E4\u05D5\u05EA / \u05D0\u05EA\u05E8", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA / \u05D8\u05DC\u05E4\u05D5\u05DF / \u05E9\u05E2\u05D5\u05EA", "textarea"]], gear: [["name", "\u05E4\u05E8\u05D9\u05D8"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E8\u05DB\u05D9\u05E9\u05D4", "url"], ["guide", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D3\u05E8\u05DB\u05EA \u05E9\u05D9\u05DE\u05D5\u05E9", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], task: [["title", "\u05DE\u05E9\u05D9\u05DE\u05D4"]] };
+var fields = { booking: [["name", "\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4"], ["type", "\u05E1\u05D5\u05D2"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["supplier", "\u05E1\u05E4\u05E7"], ["cost", "\u05DE\u05D7\u05D9\u05E8 \u05DB\u05D5\u05DC\u05DC \u20AA", "number"], ["paid", "\u05E9\u05D5\u05DC\u05DD \u20AA", "number"], ["ref", "\u05DE\u05E1\u05E4\u05E8 \u05D0\u05D9\u05E9\u05D5\u05E8 / \u05D4\u05D6\u05DE\u05E0\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D6\u05DE\u05E0\u05D4", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], stop: [["day", "\u05D9\u05D5\u05DD \u05D1\u05D8\u05D9\u05D5\u05DC", "number"], ["place", "\u05DE\u05E7\u05D5\u05DD / \u05D9\u05E2\u05D3"], ["kind", "\u05E1\u05D5\u05D2 \u05E2\u05E6\u05D9\u05E8\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E0\u05D9\u05D5\u05D5\u05D8", "url"], ["notes", "\u05EA\u05DB\u05E0\u05D5\u05DF \u05D5\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"], ["lat", "\u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 (Latitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"], ["lng", "\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA (Longitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"]], place: [["name", "\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD"], ["type", "\u05E1\u05D5\u05D2"], ["area", "\u05D0\u05D6\u05D5\u05E8"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05E4\u05D5\u05EA / \u05D0\u05EA\u05E8", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA / \u05D8\u05DC\u05E4\u05D5\u05DF / \u05E9\u05E2\u05D5\u05EA", "textarea"]], gear: [["name", "\u05E4\u05E8\u05D9\u05D8"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E8\u05DB\u05D9\u05E9\u05D4", "url"], ["guide", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D3\u05E8\u05DB\u05EA \u05E9\u05D9\u05DE\u05D5\u05E9", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], task: [["title", "\u05DE\u05E9\u05D9\u05DE\u05D4"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"]] };
 var session = null;
 var trip = null;
 var tab = "stop";
-var placeCategory = null;
+var categories = { place: null, booking: null, task: null };
 var routeView = "map";
 var routeCleanup = null;
 var busy = false;
@@ -30861,7 +30862,7 @@ function wipe() {
   viewEpoch++;
   session = null;
   trip = null;
-  placeCategory = null;
+  categories = { place: null, booking: null, task: null };
   busy = false;
   $("#editor").close();
   $("#editor").innerHTML = "";
@@ -31062,13 +31063,13 @@ function render() {
       return;
     }
   }
-  if (tab === "place") {
-    const category = (x) => x.payload.type?.trim() || "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4", counts = /* @__PURE__ */ new Map();
+  if (["place", "booking", "task"].includes(tab)) {
+    const category = (x) => (tab === "task" ? x.payload.category : x.payload.type)?.trim() || (tab === "task" ? "\u05DB\u05DC\u05DC\u05D9" : "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"), counts = /* @__PURE__ */ new Map();
     items.forEach((x) => counts.set(category(x), (counts.get(category(x)) || 0) + 1));
-    if (placeCategory !== null && !counts.has(placeCategory)) placeCategory = null;
+    if (categories[tab] !== null && !counts.has(categories[tab])) categories[tab] = null;
     categoryOptions = [null, ...[...counts.keys()].sort((a, b) => a.localeCompare(b, "he"))];
-    categoryMenu = '<div class="place-filter-bar"><label for="place-category">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</label><select id="place-category" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD">' + categoryOptions.map((name, index) => '<option value="' + index + '" ' + (placeCategory === name ? "selected" : "") + ">" + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</option>").join("") + "</select></div>";
-    if (placeCategory !== null) items = items.filter((x) => category(x) === placeCategory);
+    categoryMenu = '<div class="place-filter-bar"><label for="place-category">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</label><select id="place-category" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA ' + esc(tabs.find((x) => x[0] === tab)[1]) + '">' + categoryOptions.map((name, index) => '<option value="' + index + '" ' + (categories[tab] === name ? "selected" : "") + ">" + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</option>").join("") + "</select></div>";
+    if (categories[tab] !== null) items = items.filter((x) => category(x) === categories[tab]);
   }
   $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
   $("#view").querySelectorAll("[data-route-view]").forEach((b) => b.onclick = () => {
@@ -31078,7 +31079,7 @@ function render() {
   });
   const categorySelect = $("#place-category");
   if (categorySelect) categorySelect.onchange = () => {
-    placeCategory = categoryOptions[Number(categorySelect.value)];
+    categories[tab] = categoryOptions[Number(categorySelect.value)];
     render();
     $("#place-category")?.focus({ preventScroll: true });
   };
@@ -31100,7 +31101,7 @@ function render() {
 }
 function edit(kind, existing) {
   viewEpoch++;
-  const item = existing ? structuredClone(existing) : { id: crypto.randomUUID(), kind, payload: kind === "place" && placeCategory !== null ? { type: placeCategory === "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4" ? "" : placeCategory } : {} };
+  const item = existing ? structuredClone(existing) : { id: crypto.randomUUID(), kind, payload: ["place", "booking", "task"].includes(kind) && categories[kind] !== null ? { [kind === "task" ? "category" : "type"]: categories[kind] === "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4" ? "" : categories[kind] } : {} };
   $("#editor").innerHTML = "<form><h2>" + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05E4\u05E8\u05D9\u05D8" : "\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D9\u05D8") + "</h2>" + fields[kind].map(([k, t, type]) => field(k, t, item.payload[k] ?? (type === "number" ? k === "day" ? 1 : 0 : ""), type)).join("") + '<div class="row form-actions"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D1\u05E2\u05E0\u05DF</button><button type="button" id="cancel">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p><p class="form-hint">\u05D4\u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D9\u05D9\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF.</p></form>';
   $("#cancel").onclick = () => $("#editor").close();
   $("#editor form").onsubmit = async (e) => {
