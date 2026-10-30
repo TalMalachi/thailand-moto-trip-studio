@@ -30722,15 +30722,15 @@ function createRepository(client2) {
     async listDestinations() {
       return checked(await client2.from("trips").select("*").order("created_at").limit(500));
     },
-    async createDestination(ownerId, name, active) {
+    async createDestination(ownerId, name, active, settings2 = { start: "", days: 21, budget: 0, currency: "ILS" }) {
       name = String(name).trim();
       if (!name || name.length > 100) throw Error("\u05E9\u05DD \u05D9\u05E2\u05D3 \u05E0\u05D3\u05E8\u05E9 \u05D5\u05E2\u05D3 100 \u05EA\u05D5\u05D5\u05D9\u05DD");
-      return changed(await client2.from("trips").insert({ id: crypto.randomUUID(), owner_id: ownerId, title: name, destination_name: name, is_active: active, settings: { start: "", days: 21, budget: 0, currency: "ILS" } }).select());
+      return changed(await client2.from("trips").insert({ id: crypto.randomUUID(), owner_id: ownerId, title: name, destination_name: name, is_active: active, settings: validateSettings(settings2) }).select());
     },
-    async updateDestination(id, version5, name, active) {
+    async updateDestination(id, version5, name, active, settings2) {
       name = String(name).trim();
       if (!name || name.length > 100) throw Error("\u05E9\u05DD \u05D9\u05E2\u05D3 \u05E0\u05D3\u05E8\u05E9 \u05D5\u05E2\u05D3 100 \u05EA\u05D5\u05D5\u05D9\u05DD");
-      return changed(await client2.rpc("update_trip_destination", { p_id: id, p_expected_version: version5, p_destination_name: name, p_is_active: active }));
+      return changed(await client2.rpc(settings2 === void 0 ? "update_trip_destination" : "update_trip_destination_details", { p_id: id, p_expected_version: version5, p_destination_name: name, p_is_active: active, ...settings2 === void 0 ? {} : { p_settings: validateSettings(settings2) } }));
     },
     async getTrip(id) {
       if (!id) throw Error("\u05D9\u05E9 \u05DC\u05D1\u05D7\u05D5\u05E8 \u05D9\u05E2\u05D3");
@@ -31025,7 +31025,7 @@ var auth = createAuth(client, new URL("./", window.location.href).href);
 var repo = createRepository(client);
 var $ = (s) => document.querySelector(s);
 var esc4 = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-var tabs = [["dashboard", "\u05E1\u05E7\u05D9\u05E8\u05D4"], ["booking", "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA"], ["stop", "\u05DE\u05E1\u05DC\u05D5\u05DC"], ["place", "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD"], ["gear", "\u05E6\u05D9\u05D5\u05D3 \u05D5\u05D4\u05D3\u05E8\u05DB\u05D5\u05EA"], ["task", "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA"], ["settings", "\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D5\u05D2\u05D9\u05D1\u05D5\u05D9"]];
+var tabs = [["dashboard", "\u05E1\u05E7\u05D9\u05E8\u05D4"], ["booking", "\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA"], ["stop", "\u05DE\u05E1\u05DC\u05D5\u05DC"], ["place", "\u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD"], ["gear", "\u05E6\u05D9\u05D5\u05D3 \u05D5\u05D4\u05D3\u05E8\u05DB\u05D5\u05EA"], ["task", "\u05DE\u05E9\u05D9\u05DE\u05D5\u05EA"], ["settings", "\u05D2\u05D9\u05D1\u05D5\u05D9 \u05D5\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD"]];
 var fields = { booking: [["name", "\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4"], ["type", "\u05E1\u05D5\u05D2"], ["status", "\u05DE\u05E6\u05D1 \u05D4\u05D6\u05DE\u05E0\u05D4 / \u05EA\u05E9\u05DC\u05D5\u05DD"], ["workflowStatus", "\u05E1\u05D8\u05D8\u05D5\u05E1 \u05D8\u05D9\u05E4\u05D5\u05DC", "workflow"], ["supplier", "\u05E1\u05E4\u05E7"], ["cost", "\u05DE\u05D7\u05D9\u05E8 \u05DB\u05D5\u05DC\u05DC \u20AA", "number"], ["paid", "\u05E9\u05D5\u05DC\u05DD \u20AA", "number"], ["ref", "\u05DE\u05E1\u05E4\u05E8 \u05D0\u05D9\u05E9\u05D5\u05E8 / \u05D4\u05D6\u05DE\u05E0\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D6\u05DE\u05E0\u05D4", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], stop: [["day", "\u05D9\u05D5\u05DD \u05D1\u05D8\u05D9\u05D5\u05DC", "number"], ["place", "\u05DE\u05E7\u05D5\u05DD / \u05D9\u05E2\u05D3"], ["kind", "\u05E1\u05D5\u05D2 \u05E2\u05E6\u05D9\u05E8\u05D4"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E0\u05D9\u05D5\u05D5\u05D8", "url"], ["notes", "\u05EA\u05DB\u05E0\u05D5\u05DF \u05D5\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"], ["lat", "\u05E7\u05D5 \u05E8\u05D5\u05D7\u05D1 (Latitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"], ["lng", "\u05E7\u05D5 \u05D0\u05D5\u05E8\u05DA (Longitude) \u2013 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9"]], place: [["name", "\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD"], ["type", "\u05E1\u05D5\u05D2"], ["area", "\u05D0\u05D6\u05D5\u05E8"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05E4\u05D5\u05EA / \u05D0\u05EA\u05E8", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA / \u05D8\u05DC\u05E4\u05D5\u05DF / \u05E9\u05E2\u05D5\u05EA", "textarea"]], gear: [["name", "\u05E4\u05E8\u05D9\u05D8"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["status", "\u05E1\u05D8\u05D8\u05D5\u05E1"], ["url", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05E8\u05DB\u05D9\u05E9\u05D4", "url"], ["guide", "\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05D4\u05D3\u05E8\u05DB\u05EA \u05E9\u05D9\u05DE\u05D5\u05E9", "url"], ["notes", "\u05D4\u05E2\u05E8\u05D5\u05EA", "textarea"]], task: [["title", "\u05DE\u05E9\u05D9\u05DE\u05D4"], ["category", "\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["workflowStatus", "\u05E1\u05D8\u05D8\u05D5\u05E1 \u05D8\u05D9\u05E4\u05D5\u05DC", "workflow"]] };
 var session = null;
 var trip = null;
@@ -31147,7 +31147,7 @@ function passwordEditor() {
   $("#editor").showModal();
 }
 function account() {
-  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + "</span><div><strong>" + esc4(trip?.destination_name || "Motor Trip Studio") + '</strong><small dir="auto">' + esc4(session.user.email) + '</small></div></div><div class="account-tools"><button id="destinations-home">\u05D9\u05E2\u05D3\u05D9\u05DD</button><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + '</summary><div><button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
+  $("#account").innerHTML = '<div class="account-identity"><span class="account-avatar">' + icon("shield") + "</span><div><strong>" + esc4(trip?.destination_name || "Motor Trip Studio") + '</strong><small dir="auto">' + esc4(session.user.email) + '</small></div></div><div class="account-tools"><button id="destinations-home">\u05D9\u05E2\u05D3\u05D9\u05DD</button><button id="refresh">' + icon("refresh") + '\u05E8\u05E2\u05E0\u05DF \u05DE\u05D4\u05E2\u05E0\u05DF</button><details class="account-menu"><summary>\u05D7\u05E9\u05D1\u05D5\u05DF' + icon("chevron") + "</summary><div>" + (trip ? '<button id="edit-current-destination">\u05E2\u05E8\u05D9\u05DB\u05EA \u05D9\u05E2\u05D3</button>' : "") + '<button id="changepassword">\u05E9\u05D9\u05E0\u05D5\u05D9 \u05E1\u05D9\u05E1\u05DE\u05D4</button><button id="signout" class="danger">\u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF</button></div></details></div>';
   $("#destinations-home").onclick = () => {
     if (busy) return;
     $("#editor").close();
@@ -31162,9 +31162,10 @@ function account() {
   $("#refresh").onclick = () => {
     if (policyReviewDirty && !confirm("\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05D1\u05D7\u05D9\u05E8\u05D5\u05EA \u05E9\u05D8\u05E8\u05DD \u05D0\u05D5\u05E9\u05E8\u05D5. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
     policyReviewDirty = false;
-    if (tab === "settings" && !confirm("\u05D4\u05E8\u05E2\u05E0\u05D5\u05DF \u05D9\u05D7\u05DC\u05D9\u05E3 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05E9\u05DC\u05D0 \u05E0\u05E9\u05DE\u05E8\u05D5 \u05D1\u05D8\u05D5\u05E4\u05E1 \u05D4\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA. \u05DC\u05D4\u05DE\u05E9\u05D9\u05DA?")) return;
     load().catch(showLoadError);
   };
+  const editCurrent = $("#edit-current-destination");
+  if (editCurrent) editCurrent.onclick = () => destinationEditor(trip);
   $("#changepassword").onclick = passwordEditor;
   $("#signout").onclick = async () => {
     lock(true);
@@ -31264,16 +31265,21 @@ function destinationHome() {
 }
 function destinationEditor(existing) {
   viewEpoch++;
-  $("#editor").innerHTML = '<form id="destination-form"><h2>' + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05D9\u05E2\u05D3" : "\u05D9\u05E2\u05D3 \u05D7\u05D3\u05E9") + "</h2>" + field("destination", "\u05E9\u05DD \u05D4\u05D9\u05E2\u05D3", existing?.destination_name || "") + '<label class="destination-active"><input name="active" type="checkbox" ' + (existing?.is_active === false ? "" : "checked") + '> \u05D9\u05E2\u05D3 \u05E4\u05E2\u05D9\u05DC</label><p class="muted">\u05D9\u05E2\u05D3 \u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC \u05E0\u05E9\u05DE\u05E8, \u05D5\u05D0\u05E4\u05E9\u05E8 \u05DC\u05D7\u05D6\u05D5\u05E8 \u05DC\u05EA\u05DB\u05E0\u05D5\u05DF \u05E9\u05DC\u05D5 \u05D1\u05DB\u05DC \u05E2\u05EA.</p><div class="row"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D9\u05E2\u05D3</button><button type="button" id="cancel-destination">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p></form>';
+  $("#editor").innerHTML = '<form id="destination-form"><h2>' + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05D9\u05E2\u05D3" : "\u05D9\u05E2\u05D3 \u05D7\u05D3\u05E9") + "</h2>" + field("destination", "\u05E9\u05DD \u05D4\u05D9\u05E2\u05D3", existing?.destination_name || "") + field("start", "\u05EA\u05D0\u05E8\u05D9\u05DA \u05D9\u05E6\u05D9\u05D0\u05D4", existing?.settings.start || "", "date") + field("days", "\u05DE\u05E9\u05DA \u05D4\u05D8\u05D9\u05D5\u05DC \u05D1\u05D9\u05DE\u05D9\u05DD", existing?.settings.days ?? 21, "number") + field("budget", "\u05EA\u05E7\u05E6\u05D9\u05D1 \u05D4\u05D8\u05D9\u05D5\u05DC \u05D4\u05DB\u05D5\u05DC\u05DC \u05D1\u05E9\u05F4\u05D7", existing?.settings.budget ?? 0, "number") + '<label class="destination-active"><input name="active" type="checkbox" ' + (existing?.is_active === false ? "" : "checked") + '> \u05D9\u05E2\u05D3 \u05E4\u05E2\u05D9\u05DC</label><p class="muted">\u05D9\u05E2\u05D3 \u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC \u05E0\u05E9\u05DE\u05E8, \u05D5\u05D0\u05E4\u05E9\u05E8 \u05DC\u05D7\u05D6\u05D5\u05E8 \u05DC\u05EA\u05DB\u05E0\u05D5\u05DF \u05E9\u05DC\u05D5 \u05D1\u05DB\u05DC \u05E2\u05EA.</p><div class="row"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D9\u05E2\u05D3</button><button type="button" id="cancel-destination">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p data-dialog-status role="status" aria-live="polite"></p></form>';
   const form = $("#destination-form");
   form.elements.destination.required = true;
   form.elements.destination.maxLength = 100;
+  form.elements.days.min = 1;
+  form.elements.days.max = 365;
+  form.elements.days.step = 1;
+  form.elements.days.required = true;
+  form.elements.budget.required = true;
   $("#cancel-destination").onclick = () => $("#editor").close();
   form.onsubmit = async (e) => {
     e.preventDefault();
-    const name = form.elements.destination.value.trim(), active = form.elements.active.checked;
+    const name = form.elements.destination.value.trim(), active = form.elements.active.checked, settings2 = { ...existing?.settings || {}, start: form.elements.start.value, days: Number(form.elements.days.value), budget: Number(form.elements.budget.value), currency: "ILS" };
     if (!name) return;
-    const okay = await saveOperation(() => existing ? repo.updateDestination(existing.id, existing.version, name, active) : repo.createDestination(session.user.id, name, active));
+    const okay = await saveOperation(() => existing ? repo.updateDestination(existing.id, existing.version, name, active, settings2) : repo.createDestination(session.user.id, name, active, settings2));
     if (okay) {
       $("#editor").close();
       await load();
@@ -31528,12 +31534,7 @@ function preview(parsed) {
   $("#editor").showModal();
 }
 function settings() {
-  $("#view").innerHTML = "<section><h2>\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA " + esc4(trip.destination_name || "\u05D4\u05D9\u05E2\u05D3") + '</h2><form id="settingsform">' + field("start", "\u05EA\u05D0\u05E8\u05D9\u05DA \u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05EA\u05D5\u05DB\u05E0\u05DF", trip.settings.start, "date") + field("days", "\u05DE\u05E1\u05E4\u05E8 \u05D9\u05DE\u05D9\u05DD", trip.settings.days, "number") + field("budget", "\u05EA\u05E7\u05E6\u05D9\u05D1 \u05DB\u05D5\u05DC\u05DC \u20AA", trip.settings.budget, "number") + '<button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D4\u05D2\u05D3\u05E8\u05D5\u05EA \u05D1\u05E2\u05E0\u05DF</button></form></section><section><h2>\u05D2\u05D9\u05D1\u05D5\u05D9 \u05D5\u05D4\u05E2\u05D1\u05E8\u05EA \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD</h2><p>\u05D4\u05DE\u05D9\u05D3\u05E2 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05DE\u05D5\u05DE\u05DC\u05E5 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D2\u05D9\u05D1\u05D5\u05D9 \u05DC\u05E4\u05E0\u05D9 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D2\u05D3\u05D5\u05DC\u05D9\u05DD.</p><button id="export">\u05D9\u05E6\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON</button><label>\u05D9\u05D1\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON<input id="import" type="file" accept="application/json,.json"></label><button id="localimport">\u05D4\u05E2\u05D1\u05E8 \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05DE\u05D4\u05D2\u05E8\u05E1\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D1\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D6\u05D4</button><p>\u05D4\u05D9\u05D9\u05D1\u05D5\u05D0 \u05DE\u05D5\u05E1\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD \u05DC\u05D0\u05D7\u05E8 \u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4. \u05D4\u05D5\u05D0 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05D5\u05D7\u05E7 \u05D0\u05D5 \u05DE\u05D7\u05DC\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD.</p></section>';
-  $("#settingsform").onsubmit = async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target), settings2 = { ...trip.settings, start: fd.get("start"), days: Number(fd.get("days")), budget: Number(fd.get("budget")), currency: "ILS" };
-    if (await saveOperation(() => repo.updateSettings(trip.id, trip.version, settings2))) await afterSave();
-  };
+  $("#view").innerHTML = '<section><h2>\u05D2\u05D9\u05D1\u05D5\u05D9 \u05D5\u05D4\u05E2\u05D1\u05E8\u05EA \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD</h2><p>\u05D4\u05DE\u05D9\u05D3\u05E2 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05D7\u05E9\u05D1\u05D5\u05E0\u05DA \u05D1\u05E2\u05E0\u05DF. \u05DE\u05D5\u05DE\u05DC\u05E5 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D2\u05D9\u05D1\u05D5\u05D9 \u05DC\u05E4\u05E0\u05D9 \u05E9\u05D9\u05E0\u05D5\u05D9\u05D9\u05DD \u05D2\u05D3\u05D5\u05DC\u05D9\u05DD.</p><button id="export">\u05D9\u05E6\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON</button><label>\u05D9\u05D1\u05D5\u05D0 \u05D2\u05D9\u05D1\u05D5\u05D9 JSON<input id="import" type="file" accept="application/json,.json"></label><button id="localimport">\u05D4\u05E2\u05D1\u05E8 \u05E0\u05EA\u05D5\u05E0\u05D9\u05DD \u05DE\u05D4\u05D2\u05E8\u05E1\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D1\u05DE\u05DB\u05E9\u05D9\u05E8 \u05D6\u05D4</button><p>\u05D4\u05D9\u05D9\u05D1\u05D5\u05D0 \u05DE\u05D5\u05E1\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D7\u05D3\u05E9\u05D9\u05DD \u05DC\u05D0\u05D7\u05E8 \u05EA\u05E6\u05D5\u05D2\u05D4 \u05DE\u05E7\u05D3\u05D9\u05DE\u05D4. \u05D4\u05D5\u05D0 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05D5\u05D7\u05E7 \u05D0\u05D5 \u05DE\u05D7\u05DC\u05D9\u05E3 \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05E7\u05D9\u05D9\u05DE\u05D9\u05DD.</p></section>';
   $("#export").onclick = () => download(exportTrip(trip));
   $("#import").onchange = async (e) => {
     const f = e.target.files[0];
