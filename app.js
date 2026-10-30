@@ -20968,6 +20968,7 @@ var fields = { booking: [["name", "\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05D6\u
 var session = null;
 var trip = null;
 var tab = "stop";
+var placeCategory = null;
 var busy = false;
 var epoch = 0;
 var viewEpoch = 0;
@@ -20994,6 +20995,7 @@ function wipe() {
   viewEpoch++;
   session = null;
   trip = null;
+  placeCategory = null;
   busy = false;
   $("#editor").close();
   $("#editor").innerHTML = "";
@@ -21155,9 +21157,22 @@ function render() {
     settings();
     return;
   }
-  const items = trip.items.filter((x) => x.kind === tab);
+  let items = trip.items.filter((x) => x.kind === tab);
   if (tab === "stop") items.sort((a, b) => a.payload.day - b.payload.day);
-  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div><div class="cards">' + items.map((x) => '<div class="card" data-id="' + esc(x.id) + '">' + (tab === "task" ? '<label><input type="checkbox" aria-label="\u05E1\u05D9\u05DE\u05D5\u05DF \u05DE\u05E9\u05D9\u05DE\u05D4" ' + (x.payload.done ? "checked" : "") + "> \u05D1\u05D5\u05E6\u05E2</label>" : "") + fields[tab].map(([k, label]) => x.payload[k] !== "" && x.payload[k] !== void 0 ? "<p><small>" + esc(label) + ":</small> " + (["url", "guide"].includes(k) ? safeLink(x.payload[k]) : esc(x.payload[k])) + "</p>" : "").join("") + '<div class="row"><button data-action="edit">\u05E2\u05E8\u05D9\u05DB\u05D4</button><button data-action="delete" class="danger">\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></div>').join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
+  let categoryMenu = "", categoryOptions = [];
+  if (tab === "place") {
+    const category = (x) => x.payload.type?.trim() || "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4", counts = /* @__PURE__ */ new Map();
+    items.forEach((x) => counts.set(category(x), (counts.get(category(x)) || 0) + 1));
+    if (placeCategory !== null && !counts.has(placeCategory)) placeCategory = null;
+    categoryOptions = [null, ...[...counts.keys()].sort((a, b) => a.localeCompare(b, "he"))];
+    categoryMenu = '<div class="row" role="group" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD" style="margin:12px 0">' + categoryOptions.map((name, index) => '<button type="button" data-place-category="' + index + '" aria-pressed="' + (placeCategory === name) + '" class="' + (placeCategory === name ? "active" : "") + '">' + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</button>").join("") + "</div>";
+    if (placeCategory !== null) items = items.filter((x) => category(x) === placeCategory);
+  }
+  $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => '<div class="card" data-id="' + esc(x.id) + '">' + (tab === "task" ? '<label><input type="checkbox" aria-label="\u05E1\u05D9\u05DE\u05D5\u05DF \u05DE\u05E9\u05D9\u05DE\u05D4" ' + (x.payload.done ? "checked" : "") + "> \u05D1\u05D5\u05E6\u05E2</label>" : "") + fields[tab].map(([k, label]) => x.payload[k] !== "" && x.payload[k] !== void 0 ? "<p><small>" + esc(label) + ":</small> " + (["url", "guide"].includes(k) ? safeLink(x.payload[k]) : esc(x.payload[k])) + "</p>" : "").join("") + '<div class="row"><button data-action="edit">\u05E2\u05E8\u05D9\u05DB\u05D4</button><button data-action="delete" class="danger">\u05DE\u05D7\u05D9\u05E7\u05D4</button></div></div>').join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
+  $("#view").querySelectorAll("[data-place-category]").forEach((b) => b.onclick = () => {
+    placeCategory = categoryOptions[Number(b.dataset.placeCategory)];
+    render();
+  });
   $("#add").onclick = () => edit(tab);
   $("#view").querySelectorAll("[data-id]").forEach((card) => {
     const item = items.find((x) => x.id === card.dataset.id);
@@ -21176,7 +21191,7 @@ function render() {
 }
 function edit(kind, existing) {
   viewEpoch++;
-  const item = existing ? structuredClone(existing) : { id: crypto.randomUUID(), kind, payload: {} };
+  const item = existing ? structuredClone(existing) : { id: crypto.randomUUID(), kind, payload: kind === "place" && placeCategory !== null ? { type: placeCategory === "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4" ? "" : placeCategory } : {} };
   $("#editor").innerHTML = "<form><h2>" + (existing ? "\u05E2\u05E8\u05D9\u05DB\u05EA \u05E4\u05E8\u05D9\u05D8" : "\u05D4\u05D5\u05E1\u05E4\u05EA \u05E4\u05E8\u05D9\u05D8") + "</h2>" + fields[kind].map(([k, t, type]) => field(k, t, item.payload[k] ?? (type === "number" ? k === "day" ? 1 : 0 : ""), type)).join("") + '<div class="row"><button type="submit">\u05E9\u05DE\u05D5\u05E8 \u05D1\u05E2\u05E0\u05DF</button><button type="button" id="cancel">\u05D1\u05D9\u05D8\u05D5\u05DC</button></div><p>\u05D1\u05DE\u05E7\u05E8\u05D4 \u05E9\u05D2\u05D9\u05D0\u05D4 \u05D4\u05D8\u05D5\u05E4\u05E1 \u05D9\u05D9\u05E9\u05D0\u05E8 \u05E4\u05EA\u05D5\u05D7. \u05E0\u05D9\u05EA\u05DF \u05DC\u05D4\u05E2\u05EA\u05D9\u05E7 \u05D0\u05EA \u05D4\u05E2\u05E8\u05DB\u05D9\u05DD \u05DC\u05E4\u05E0\u05D9 \u05E8\u05E2\u05E0\u05D5\u05DF.</p></form>';
   $("#cancel").onclick = () => $("#editor").close();
   $("#editor form").onsubmit = async (e) => {
