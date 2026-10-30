@@ -30546,6 +30546,12 @@ function createRepository(client2) {
 // src/route-map.js
 var import_leaflet = __toESM(require_leaflet_src(), 1);
 
+// src/map-popup-layout.js
+function popupDimensions(width, height) {
+  const maxWidth = Math.max(80, Math.min(340, (width || 320) - 70)), maxHeight = Math.max(80, (height || 340) - 110);
+  return { maxWidth, maxHeight, minWidth: Math.min(120, maxWidth) };
+}
+
 // src/route-points.js
 var areas = [
   { aliases: ["\u05E6\u05F3\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "\u05E6\u2019\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "\u05E6\u05D0\u05E0\u05D2 \u05DE\u05D0\u05D9", "chiang mai"], lat: 18.7883, lng: 98.9853, query: "Chiang Mai, Thailand" },
@@ -30669,6 +30675,27 @@ function mountRouteMap(root, items) {
   }
   const map = import_leaflet.default.map(container, { scrollWheelZoom: false });
   map.attributionControl.setPrefix(false);
+  let openedPopup = null;
+  const updatePopupLimits = () => {
+    const size = map.getSize(), limits = popupDimensions(size.x, size.y);
+    container.style.setProperty("--route-popup-width", limits.maxWidth + "px");
+    container.style.setProperty("--route-popup-height", limits.maxHeight + "px");
+    const open = openedPopup;
+    if (open) {
+      Object.assign(open.options, limits);
+      open.update();
+    }
+    return limits;
+  };
+  updatePopupLimits();
+  map.on("resize", updatePopupLimits);
+  map.on("popupopen", (event) => {
+    openedPopup = event.popup;
+    updatePopupLimits();
+  });
+  map.on("popupclose", () => {
+    openedPopup = null;
+  });
   import_leaflet.default.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors' }).on("tileerror", () => {
     warning.hidden = false;
   }).addTo(map);
@@ -30678,7 +30705,7 @@ function mountRouteMap(root, items) {
     const popup = element("div");
     popup.dir = "rtl";
     for (const point of group.points) popup.append(stopSummary(point));
-    import_leaflet.default.marker([group.lat, group.lng], { icon, title: group.points.map((x) => "\u05D9\u05D5\u05DD " + x.day + " \xB7 " + x.label).join(" / ") }).bindPopup(popup, { maxWidth: 340, maxHeight: 320 }).addTo(map);
+    import_leaflet.default.marker([group.lat, group.lng], { icon, title: group.points.map((x) => "\u05D9\u05D5\u05DD " + x.day + " \xB7 " + x.label).join(" / ") }).bindPopup(popup, { ...popupDimensions(map.getSize().x, map.getSize().y), className: "route-popup", autoPanPadding: [16, 16], keepInView: true }).addTo(map);
   }
   map.fitBounds(groups.map((x) => [x.lat, x.lng]), { padding: [30, 30], maxZoom: 12 });
   const timer = setTimeout(() => map.invalidateSize(), 0), observer = typeof ResizeObserver === "function" ? new ResizeObserver(() => map.invalidateSize()) : null;

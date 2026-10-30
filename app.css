@@ -676,3 +676,30 @@ details > summary {
   cursor: pointer;
   padding: 12px 0;
 }
+.route-popup .leaflet-popup-content {
+  max-width: var(--route-popup-width,250px);
+  max-height: var(--route-popup-height,230px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overflow-wrap: anywhere;
+  scrollbar-width: thin;
+  padding-right: 4px;
+}
+.route-popup .map-navigation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.route-popup .map-navigation .btn {
+  white-space: normal;
+  text-align: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+}
+.route-popup .leaflet-popup-close-button {
+  z-index: 2;
+}
