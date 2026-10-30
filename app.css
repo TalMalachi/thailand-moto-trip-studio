@@ -660,7 +660,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .leaflet-popup-content .muted {
   color: #41576c;
 }
-.leaflet-popup-content .btn {
+.leaflet-popup-content .map-navigation .btn {
   color: white;
 }
 .leaflet-popup-content .map-stop:last-child {
@@ -1645,4 +1645,16 @@ main a {
   display: block;
   margin-block-start: 12px;
   color: #526B6D;
+}
+.map-stop [data-open-day] {
+  color: #123235;
+  background: #e7f3ef;
+  border-color: #92b7ae;
+  width: 100%;
+  margin-block-start: 12px;
+  min-height: 48px;
+}
+.map-stop [data-open-day]:hover {
+  color: #123235;
+  background: #d5e9e3;
 }
