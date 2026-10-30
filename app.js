@@ -31028,7 +31028,7 @@ function render() {
     items.forEach((x) => counts.set(category(x), (counts.get(category(x)) || 0) + 1));
     if (placeCategory !== null && !counts.has(placeCategory)) placeCategory = null;
     categoryOptions = [null, ...[...counts.keys()].sort((a, b) => a.localeCompare(b, "he"))];
-    categoryMenu = '<div class="row" role="group" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD" style="margin:12px 0">' + categoryOptions.map((name, index) => '<button type="button" data-place-category="' + index + '" aria-pressed="' + (placeCategory === name) + '" class="' + (placeCategory === name ? "active" : "") + '">' + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</button>").join("") + "</div>";
+    categoryMenu = '<div class="place-filter-bar"><label for="place-category">\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4</label><select id="place-category" aria-label="\u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D5\u05EA \u05DE\u05E7\u05D5\u05DE\u05D5\u05EA \u05D5\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD">' + categoryOptions.map((name, index) => '<option value="' + index + '" ' + (placeCategory === name ? "selected" : "") + ">" + esc(name ?? "\u05D4\u05DB\u05D5\u05DC") + " (" + (name === null ? items.length : counts.get(name)) + ")</option>").join("") + "</select></div>";
     if (placeCategory !== null) items = items.filter((x) => category(x) === placeCategory);
   }
   $("#view").innerHTML = '<section><div class="row"><h2>' + tabs.find((x) => x[0] === tab)[1] + '</h2><button id="add">+ \u05D4\u05D5\u05E1\u05E3 \u05E4\u05E8\u05D9\u05D8</button></div>' + categoryMenu + '<div class="cards">' + items.map((x) => recordCard(x, fields[tab], tab === "stop" ? lodgingMarkup(x, trip.items) : "")).join("") + "</div>" + (items.length ? "" : "<p>\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05E4\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E2\u05E0\u05DF.</p>") + "</section>";
@@ -31037,11 +31037,12 @@ function render() {
     render();
     focusView();
   });
-  $("#view").querySelectorAll("[data-place-category]").forEach((b) => b.onclick = () => {
-    placeCategory = categoryOptions[Number(b.dataset.placeCategory)];
+  const categorySelect = $("#place-category");
+  if (categorySelect) categorySelect.onchange = () => {
+    placeCategory = categoryOptions[Number(categorySelect.value)];
     render();
-    $("#view [data-place-category][aria-pressed=true]")?.focus();
-  });
+    $("#place-category")?.focus({ preventScroll: true });
+  };
   $("#add").onclick = () => edit(tab);
   $("#view").querySelectorAll("[data-id]").forEach((card) => {
     const item = items.find((x) => x.id === card.dataset.id);
