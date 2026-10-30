@@ -609,9 +609,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 /* src/route-map.css */
 #route-map {
-  height: 58vh;
+  height: 80vh;
+  height: 80dvh;
   min-height: 340px;
-  max-height: 620px;
+  max-height: none;
   width: 100%;
   border-radius: 12px;
   direction: ltr;
@@ -1417,8 +1418,9 @@ a {
   border: 1px solid var(--line);
   min-height: 330px;
   background: #dce8e5;
-  max-height: 660px;
-  height: 55vh;
+  max-height: none;
+  height: 80vh;
+  height: 80dvh;
   border-radius: 14px;
 }
 .route-marker {
@@ -1581,7 +1583,8 @@ a {
   }
   #route-map {
     min-height: 340px;
-    height: 53vh;
+    height: 80vh;
+    height: 80dvh;
   }
 }
 @media (prefers-reduced-motion: reduce) {
